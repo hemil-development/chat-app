@@ -269,6 +269,7 @@ export default function App() {
           text: m.message,
           timestamp: new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
           type: m.type || 'text',
+          createdAt: m.created_at,
         }));
         setAllMessages(formatted);
       }
@@ -304,6 +305,7 @@ export default function App() {
                     text: m.message,
                     timestamp: new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
                     type: m.type || 'text',
+                    createdAt: m.created_at,
                   }
                 ];
               });
@@ -525,6 +527,7 @@ export default function App() {
             text: newMsg.message,
             timestamp: new Date(newMsg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
             type: 'text',
+            createdAt: newMsg.created_at,
           }
         ];
       });
@@ -624,7 +627,7 @@ export default function App() {
                   contacts={contacts}
                   typingUsers={activeRoomTypingUsers}
                 />
-                <MessageInput onSendMessage={handleSend} onTyping={sendTypingStatus} />
+                <MessageInput onSendMessage={handleSend} onTyping={sendTypingStatus} contacts={contacts} />
               </>
             )}
 

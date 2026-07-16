@@ -1,15 +1,40 @@
 import { useState, useRef } from 'react';
 import { Paperclip, Smile, Send, AtSign, Mic, Bold, Italic } from 'lucide-react';
 import { IconButton } from './ui/IconButton';
+import { Avatar } from './ui/Avatar';
+import clsx from 'clsx';
 
-const EMOJIS = ['😊', '👍', '❤️', '🎉', '😂', '🙏', '🔥', '✅', '💯', '🚀', '👀', '🤔'];
+import EmojiPicker from 'emoji-picker-react';
 
-export function MessageInput({ onSendMessage, onTyping }) {
+const getMentionQuery = (val, cursorIdx) => {
+  const textBeforeCursor = val.substring(0, cursorIdx);
+  const lastAtIdx = textBeforeCursor.lastIndexOf('@');
+  
+  if (lastAtIdx === -1) return null;
+  
+  const isStart = lastAtIdx === 0 || /\s/.test(textBeforeCursor[lastAtIdx - 1]);
+  if (!isStart) return null;
+  
+  const query = textBeforeCursor.substring(lastAtIdx + 1);
+  if (/\s/.test(query)) return null;
+  
+  return { query, index: lastAtIdx };
+};
+
+export function MessageInput({ onSendMessage, onTyping, contacts = [] }) {
   const [text, setText]           = useState('');
   const [emojiOpen, setEmojiOpen] = useState(false);
   const inputRef                  = useRef(null);
   const typingTimeoutRef          = useRef(null);
   const [isTyping, setIsTyping]   = useState(false);
+
+  const [mentionState, setMentionState] = useState(null); // { query: string, index: number }
+  const [highlightIdx, setHighlightIdx] = useState(0);
+
+  const mentionContacts = (contacts || []).filter(c => !c.isChannel);
+  const filteredMentions = mentionState 
+    ? mentionContacts.filter(c => c.name.toLowerCase().includes(mentionState.query.toLowerCase()))
+    : [];
 
   const send = () => {
     const t = text.trim();
@@ -17,6 +42,7 @@ export function MessageInput({ onSendMessage, onTyping }) {
     onSendMessage(t);
     setText('');
     setEmojiOpen(false);
+    setMentionState(null);
     
     if (onTyping) onTyping(false);
     setIsTyping(false);
@@ -25,9 +51,56 @@ export function MessageInput({ onSendMessage, onTyping }) {
     inputRef.current?.focus();
   };
 
-  const handleTextChange = (e) => {
-    setText(e.target.value);
+  const insertMention = (user) => {
+    if (!mentionState) return;
+    const before = text.substring(0, mentionState.index);
+    const after = text.substring(inputRef.current.selectionEnd);
+    const newText = `${before}@${user.name} ${after}`;
     
+    setText(newText);
+    setMentionState(null);
+    
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        const cursorPosition = before.length + user.name.length + 2; // @ and space
+        inputRef.current.setSelectionRange(cursorPosition, cursorPosition);
+      }
+    }, 10);
+  };
+
+  const triggerAtSymbol = () => {
+    if (!inputRef.current) return;
+    const start = inputRef.current.selectionStart;
+    const before = text.substring(0, start);
+    const after = text.substring(inputRef.current.selectionEnd);
+    const newText = before + '@' + after;
+    
+    setText(newText);
+    setMentionState({ query: '', index: start });
+    setHighlightIdx(0);
+    
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.setSelectionRange(start + 1, start + 1);
+      }
+    }, 10);
+  };
+
+  const handleTextChange = (e) => {
+    const val = e.target.value;
+    setText(val);
+    
+    const cursor = e.target.selectionStart;
+    const queryInfo = getMentionQuery(val, cursor);
+    if (queryInfo) {
+      setMentionState(queryInfo);
+      setHighlightIdx(0);
+    } else {
+      setMentionState(null);
+    }
+
     if (onTyping) {
       if (!isTyping) {
         setIsTyping(true);
@@ -44,7 +117,33 @@ export function MessageInput({ onSendMessage, onTyping }) {
   };
 
   const onKey = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+    if (mentionState && filteredMentions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setHighlightIdx(prev => (prev + 1) % filteredMentions.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setHighlightIdx(prev => (prev - 1 + filteredMentions.length) % filteredMentions.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        insertMention(filteredMentions[highlightIdx]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMentionState(null);
+        return;
+      }
+    }
+
+    if (e.key === 'Enter' && !e.shiftKey) { 
+      e.preventDefault(); 
+      send(); 
+    }
   };
 
   const addEmoji = (em) => {
@@ -55,7 +154,31 @@ export function MessageInput({ onSendMessage, onTyping }) {
 
   return (
     <div className="px-6 pb-6 pt-2 bg-white flex-shrink-0">
-      <div className="msg-box">
+      <div className="msg-box relative">
+
+        {/* Mentions Dropdown */}
+        {mentionState && filteredMentions.length > 0 && (
+          <div className="absolute bottom-full left-4 mb-2 w-[240px] bg-white border border-[#e2e8f0]
+                          rounded-xl shadow-lg overflow-y-auto max-h-[200px] z-50 py-1 animate-scale-in">
+            {filteredMentions.map((user, idx) => (
+              <div
+                key={user.id}
+                onMouseEnter={() => setHighlightIdx(idx)}
+                onClick={() => insertMention(user)}
+                className={clsx(
+                  "flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors text-[13px] font-medium",
+                  idx === highlightIdx ? "bg-[#f1f5f9] text-[#0f172a]" : "text-[#475569] hover:bg-[#f8fafc]"
+                )}
+              >
+                <Avatar initials={user.initials} color={user.color} size="xs" borderColor="#ffffff" />
+                <div className="flex-1 min-w-0">
+                  <p className="truncate font-semibold">{user.name}</p>
+                  <p className="text-[10px] text-[#94a3b8] truncate leading-none mt-0.5">{user.role}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Textarea */}
         <div className="px-4 pt-3 pb-2">
@@ -80,7 +203,7 @@ export function MessageInput({ onSendMessage, onTyping }) {
             <IconButton icon={Italic}     title="Italic" />
             <div className="w-px h-4 bg-[#e2e8f0] mx-1" />
             <IconButton icon={Paperclip}  title="Attach file" />
-            <IconButton icon={AtSign}     title="Mention"     />
+            <IconButton icon={AtSign}     title="Mention"  onClick={triggerAtSymbol} />
             <div className="relative">
               <IconButton
                 icon={Smile}
@@ -89,18 +212,14 @@ export function MessageInput({ onSendMessage, onTyping }) {
                 active={emojiOpen}
               />
               {emojiOpen && (
-                <div className="absolute bottom-full left-0 mb-2 p-2 bg-white border border-[#e2e8f0]
-                                rounded-xl shadow-lg grid grid-cols-6 gap-1 animate-scale-in z-50">
-                  {EMOJIS.map(em => (
-                    <button
-                      key={em}
-                      onClick={() => addEmoji(em)}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg text-lg
-                                 hover:bg-[#f1f5f9] transition-colors"
-                    >
-                      {em}
-                    </button>
-                  ))}
+                <div className="absolute bottom-full left-0 mb-2 z-50">
+                  <EmojiPicker
+                    onEmojiClick={(emojiData) => addEmoji(emojiData.emoji)}
+                    autoFocusSearch={false}
+                    theme="light"
+                    width={320}
+                    height={400}
+                  />
                 </div>
               )}
             </div>
