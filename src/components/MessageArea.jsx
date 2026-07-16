@@ -5,14 +5,33 @@ import { Avatar } from './ui/Avatar';
 import { DateDivider } from './chat/DateDivider';
 import { MessageBubble } from './chat/MessageBubble';
 
+function getDateLabel(isoString) {
+  if (!isoString) return 'Today';
+  const date = new Date(isoString);
+  const now = new Date();
+  
+  if (date.toDateString() === now.toDateString()) {
+    return 'Today';
+  }
+  
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday';
+  }
+  
+  return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
 function groupMessages(messages) {
   const groups = [];
   messages.forEach(msg => {
+    const dateLabel = getDateLabel(msg.createdAt);
     const last = groups[groups.length - 1];
-    if (last && last.senderId === msg.senderId) {
+    if (last && last.senderId === msg.senderId && last.dateLabel === dateLabel) {
       last.items.push(msg);
     } else {
-      groups.push({ senderId: msg.senderId, items: [msg] });
+      groups.push({ senderId: msg.senderId, dateLabel, items: [msg] });
     }
   });
   return groups;
@@ -29,16 +48,28 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
 
   const groups = groupMessages(messages);
 
+  let lastDateLabel = null;
+  const groupsWithDivider = groups.map(group => {
+    const showDivider = group.dateLabel !== lastDateLabel;
+    if (showDivider) {
+      lastDateLabel = group.dateLabel;
+    }
+    return {
+      ...group,
+      showDivider
+    };
+  });
+
   return (
     <div className="flex-1 overflow-y-auto bg-white py-6">
-      <DateDivider label="Today" />
-
-      {groups.map((group, gi) => {
+      {groupsWithDivider.map((group, gi) => {
         const isMe = group.senderId === 'me' || group.senderId === currentUser?.id;
         const sender = getSender(group.senderId);
 
         return (
-          <div key={gi} className={clsx('flex gap-3 px-6 py-2 group transition-colors duration-150', isMe && 'flex-row-reverse')}>
+          <div key={gi}>
+            {group.showDivider && <DateDivider label={group.dateLabel} />}
+            <div className={clsx('flex gap-3 px-6 py-2 group transition-colors duration-150', isMe && 'flex-row-reverse')}>
 
             {/* Avatar - Only for incoming messages */}
             <div className={clsx('flex-shrink-0 w-8 self-start mt-0.5', isMe && 'hidden')}>
@@ -77,6 +108,7 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
                 </div>
               )}
             </div>
+          </div>
           </div>
         );
       })}
