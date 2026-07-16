@@ -46,6 +46,15 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
     return contacts.find(c => c.id === senderId) ?? { name: 'Unknown', initials: '?', color: '#9ca3af' };
   };
 
+  const isSeen = (msg) => {
+    if (contact?.isChannel) return false;
+    const readList = msg.readByUsers || [];
+    return readList.some(item => {
+      const parsed = typeof item === 'string' ? JSON.parse(item) : item;
+      return parsed?.user_id === contact?.id;
+    });
+  };
+
   const groups = groupMessages(messages);
 
   let lastDateLabel = null;
@@ -101,10 +110,15 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
               {/* Timestamp below the group - Only for outgoing messages */}
               {isMe && (
                 <div className="flex items-center gap-1 mt-0.5 pr-1">
-                  <span className="text-[10px] text-[#94a3b8] font-medium tabular-nums opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="text-[10px] text-[#94a3b8] font-medium tabular-nums">
                     {group.items[group.items.length - 1].timestamp}
                   </span>
-                  <CheckCheck size={12} className="text-[#6366f1] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <CheckCheck
+                    size={12}
+                    className={clsx(
+                      isSeen(group.items[group.items.length - 1]) ? 'text-[#4f46e5]' : 'text-[#94a3b8]'
+                    )}
+                  />
                 </div>
               )}
             </div>

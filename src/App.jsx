@@ -46,8 +46,18 @@ function formatMessageTime(isoString) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+const sortContacts = (list) => {
+  return [...list].sort((a, b) => {
+    const timeA = a.rawTimestamp ? new Date(a.rawTimestamp).getTime() : 0;
+    const timeB = b.rawTimestamp ? new Date(b.rawTimestamp).getTime() : 0;
+    if (timeA !== timeB) return timeB - timeA;
+    return a.name.localeCompare(b.name);
+  });
+};
+
 export default function App() {
   const [session, setSession]       = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [activeNav,     setActiveNav]     = useState('chats');
   const [contacts,      setContacts]      = useState([]);
   const [activeContact, setActiveContact] = useState(null);
@@ -61,6 +71,8 @@ export default function App() {
   const [companyUserId, setCompanyUserId] = useState(null);
   const activeChannelRef  = useRef(null);
   const [currentUser,   setCurrentUser]   = useState(null);
+
+  const currentContact = contacts.find(c => c.id === activeContact?.id) || activeContact;
 
   // Load initial data
   useEffect(() => {
@@ -120,6 +132,25 @@ export default function App() {
           lastMessages = msgs || [];
         }
 
+        // 4.5 Fetch unread messages to calculate badge counts
+        const { data: unreadMessages } = await supabase
+          .from('chat_messages')
+          .select('id, room_id, read_by_users')
+          .neq('created_by', companyUserId);
+
+        const getUnreadCountForRoom = (roomId) => {
+          if (!roomId) return 0;
+          return (unreadMessages || []).filter(m => {
+            if (m.room_id !== roomId) return false;
+            const readList = m.read_by_users || [];
+            const hasRead = readList.some(item => {
+              const parsed = typeof item === 'string' ? JSON.parse(item) : item;
+              return parsed?.user_id === companyUserId;
+            });
+            return !hasRead;
+          }).length;
+        };
+
         // Helper to format last message string
         const formatLastMsg = (msg) => {
           if (!msg) return '';
@@ -146,7 +177,8 @@ export default function App() {
               role: 'Channel',
               lastMessage: lastMsg ? formatLastMsg(lastMsg) : 'No messages yet',
               timestamp: lastMsg ? formatMessageTime(lastMsg.created_at) : '',
-              unread: 0,
+              rawTimestamp: lastMsg ? lastMsg.created_at : '',
+              unread: getUnreadCountForRoom(r.id),
               pinned: false,
               isChannel: true,
             };
@@ -173,14 +205,15 @@ export default function App() {
             lastSeen: cu.is_active ? 'Online' : 'Offline',
             lastMessage: lastMsg ? (lastMsg.created_by === companyUserId ? `You: ${lastMsg.message}` : lastMsg.message) : 'Click to start chatting',
             timestamp: lastMsg ? formatMessageTime(lastMsg.created_at) : '',
-            unread: 0,
+            rawTimestamp: lastMsg ? lastMsg.created_at : '',
+            unread: getUnreadCountForRoom(matchingRoom ? matchingRoom.id : null),
             pinned: false,
             isChannel: false,
           };
         });
 
         const merged = [...groupContacts, ...directContacts];
-        setContacts(merged);
+        setContacts(sortContacts(merged));
 
         if (merged.length > 0) {
           setActiveContact(merged[0]);
@@ -236,12 +269,12 @@ export default function App() {
 
   // Listen to messages for active contact, and setup real-time subscriptions
   useEffect(() => {
-    if (!activeContact) return;
+    if (!currentContact) return;
 
     let isMounted = true;
 
     async function loadMessages() {
-      if (!activeContact.roomId) {
+      if (!currentContact.roomId) {
         setAllMessages([]);
         return;
       }
@@ -249,7 +282,7 @@ export default function App() {
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
-        .eq('room_id', activeContact.roomId)
+        .eq('room_id', currentContact.roomId)
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -265,17 +298,21 @@ export default function App() {
           timestamp: new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
           type: m.type || 'text',
           createdAt: m.created_at,
+          readByUsers: m.read_by_users,
         }));
         setAllMessages(formatted);
       }
+
+      // Mark messages in this room as read in the database
+      markMessagesAsRead(currentContact.roomId);
     }
 
     loadMessages();
 
-    // Subscribe to database inserts and typing broadcasts for the selected room
+    // Subscribe to database inserts, updates and typing broadcasts for the selected room
     let channel;
-    if (activeContact.roomId) {
-      channel = supabase.channel(`room-${activeContact.roomId}`);
+    if (currentContact.roomId) {
+      channel = supabase.channel(`room-${currentContact.roomId}`);
       activeChannelRef.current = channel;
 
       channel
@@ -285,7 +322,7 @@ export default function App() {
             event: 'INSERT',
             schema: 'public',
             table: 'chat_messages',
-            filter: `room_id=eq.${activeContact.roomId}`,
+            filter: `room_id=eq.${currentContact.roomId}`,
           },
           (payload) => {
             const m = payload.new;
@@ -301,9 +338,38 @@ export default function App() {
                     timestamp: new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
                     type: m.type || 'text',
                     createdAt: m.created_at,
+                    readByUsers: m.read_by_users,
                   }
                 ];
               });
+
+              // If someone else sent it, mark it as read immediately since we are in this room
+              if (m.created_by !== companyUserId) {
+                markMessagesAsRead(currentContact.roomId);
+              }
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'chat_messages',
+            filter: `room_id=eq.${currentContact.roomId}`,
+          },
+          (payload) => {
+            const m = payload.new;
+            if (isMounted) {
+              setAllMessages(prev => prev.map(msg => {
+                if (msg.id === m.id) {
+                  return {
+                    ...msg,
+                    readByUsers: m.read_by_users,
+                  };
+                }
+                return msg;
+              }));
             }
           }
         )
@@ -314,12 +380,12 @@ export default function App() {
             const { userId, isTyping } = payload;
             if (isMounted) {
               setTypingUsers(prev => {
-                const roomTyping = prev[activeContact.roomId] || [];
+                const roomTyping = prev[currentContact.roomId] || [];
                 if (isTyping) {
                   if (roomTyping.includes(userId)) return prev;
-                  return { ...prev, [activeContact.roomId]: [...roomTyping, userId] };
+                  return { ...prev, [currentContact.roomId]: [...roomTyping, userId] };
                 } else {
-                  return { ...prev, [activeContact.roomId]: roomTyping.filter(id => id !== userId) };
+                  return { ...prev, [currentContact.roomId]: roomTyping.filter(id => id !== userId) };
                 }
               });
 
@@ -329,8 +395,8 @@ export default function App() {
                 }
                 typingTimeoutsRef.current[userId] = setTimeout(() => {
                   setTypingUsers(prev => {
-                    const roomTyping = prev[activeContact.roomId] || [];
-                    return { ...prev, [activeContact.roomId]: roomTyping.filter(id => id !== userId) };
+                    const roomTyping = prev[currentContact.roomId] || [];
+                    return { ...prev, [currentContact.roomId]: roomTyping.filter(id => id !== userId) };
                   });
                 }, 5000);
               }
@@ -345,9 +411,9 @@ export default function App() {
       activeChannelRef.current = null;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [activeContact?.roomId, activeContact?.id]);
+  }, [currentContact, companyUserId]);
 
-  // Subscribe to ALL message insertions globally to update sidebar previews in real-time
+  // Subscribe to ALL message insertions globally to update sidebar previews and badges in real-time
   useEffect(() => {
     const globalChannel = supabase
       .channel('global-messages-sidebar')
@@ -361,10 +427,10 @@ export default function App() {
         (payload) => {
           const m = payload.new;
           setContacts(prev => {
-            const exists = prev.some(c => c.roomId === m.room_id);
+            const exists = prev.some(c => c.roomId === m.room_id || (!c.roomId && c.id === m.created_by));
             if (!exists) return prev;
-            return prev.map(c => {
-              if (c.roomId === m.room_id) {
+            const updated = prev.map(c => {
+              if (c.roomId === m.room_id || (!c.roomId && c.id === m.created_by)) {
                 let text = m.message;
                 if (c.isChannel) {
                   const sender = prev.find(x => x.id === m.created_by) || (m.created_by === companyUserId ? currentUser : null);
@@ -373,14 +439,23 @@ export default function App() {
                 } else if (m.created_by === companyUserId) {
                   text = `You: ${m.message}`;
                 }
+                
+                const isIncomingFromOtherRoom = m.created_by !== companyUserId && 
+                                                currentContact?.roomId !== m.room_id && 
+                                                currentContact?.id !== c.id;
+
                 return {
                   ...c,
+                  roomId: m.room_id,
                   lastMessage: text,
                   timestamp: formatMessageTime(m.created_at),
+                  rawTimestamp: m.created_at,
+                  unread: isIncomingFromOtherRoom ? c.unread + 1 : c.unread,
                 };
               }
               return c;
             });
+            return sortContacts(updated);
           });
         }
       )
@@ -389,7 +464,63 @@ export default function App() {
     return () => {
       supabase.removeChannel(globalChannel);
     };
-  }, [currentUser]);
+  }, [currentUser, currentContact, companyUserId]);
+
+  // Subscribe to new rooms in real-time (to instantly update direct lists and GC channels)
+  useEffect(() => {
+    if (!companyUserId) return;
+    const roomsChannel = supabase
+      .channel('realtime-rooms')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_rooms',
+        },
+        async (payload) => {
+          const newRoom = payload.new;
+          if (newRoom.participants.includes(companyUserId)) {
+            if (newRoom.type === 'group') {
+              const newGC = {
+                id: newRoom.id,
+                roomId: newRoom.id,
+                name: newRoom.name || 'Group Chat',
+                initials: (newRoom.name || 'GC').split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2),
+                color: getUserColor(newRoom.id),
+                status: null,
+                role: 'Channel',
+                lastMessage: 'No messages yet',
+                timestamp: '',
+                rawTimestamp: newRoom.created_at,
+                unread: 0,
+                pinned: false,
+                isChannel: true,
+              };
+              setContacts(prev => sortContacts([newGC, ...prev]));
+            } else {
+              const otherId = newRoom.participants.find(p => p !== companyUserId);
+              if (otherId) {
+                setContacts(prev => prev.map(c => {
+                  if (c.id === otherId) {
+                    return {
+                      ...c,
+                      roomId: newRoom.id,
+                    };
+                  }
+                  return c;
+                }));
+              }
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(roomsChannel);
+    };
+  }, [companyUserId]);
 
   // Subscribe to notification inserts for Hemil Gandhi in real-time
   useEffect(() => {
@@ -439,11 +570,44 @@ export default function App() {
     };
   }, []);
 
+  const markMessagesAsRead = async (roomId) => {
+    if (!roomId || !companyUserId) return;
+    try {
+      // 1. Fetch unread messages in this room sent by other users
+      const { data: msgs } = await supabase
+        .from('chat_messages')
+        .select('id, read_by_users')
+        .eq('room_id', roomId)
+        .neq('created_by', companyUserId);
+
+      if (!msgs || msgs.length === 0) return;
+
+      // 2. Filter messages that haven't been read by this user yet
+      for (const m of msgs) {
+        const readList = m.read_by_users || [];
+        const alreadyRead = readList.some(item => {
+          const parsed = typeof item === 'string' ? JSON.parse(item) : item;
+          return parsed?.user_id === companyUserId;
+        });
+
+        if (!alreadyRead) {
+          const updatedList = [...readList, { user_id: companyUserId, read_at: new Date().toISOString() }];
+          await supabase
+            .from('chat_messages')
+            .update({ read_by_users: updatedList })
+            .eq('id', m.id);
+        }
+      }
+    } catch (err) {
+      console.error("Error marking messages as read:", err);
+    }
+  };
+
   const handleSend = async (text) => {
-    if (!activeContact) return;
+    if (!currentContact) return;
 
     try {
-      let roomId = activeContact.roomId;
+      let roomId = currentContact.roomId;
 
       // 1. If room doesn't exist, create it
       if (!roomId) {
@@ -451,17 +615,17 @@ export default function App() {
           .from('chat_rooms')
           .select('id')
           .eq('type', 'single')
-          .contains('participants', [companyUserId, activeContact.id]);
+          .contains('participants', [companyUserId, currentContact.id]);
 
         if (existing && existing.length > 0) {
           roomId = existing[0].id;
         } else {
-          const roomName = `${currentUser.name} & ${activeContact.name}`;
+          const roomName = `${currentUser.name} & ${currentContact.name}`;
           const { data: newRoom, error: roomErr } = await supabase
             .from('chat_rooms')
             .insert({
               type: 'single',
-              participants: [companyUserId, activeContact.id],
+              participants: [companyUserId, currentContact.id],
               created_by: companyUserId,
               name: roomName,
               description: 'Direct message room',
@@ -479,13 +643,13 @@ export default function App() {
 
         // Link room id to state immediately
         setContacts(prev => prev.map(c => {
-          if (c.id === activeContact.id) {
+          if (c.id === currentContact.id) {
             return { ...c, roomId };
           }
           return c;
         }));
         
-        setActiveContact(prev => ({ ...prev, roomId }));
+        setActiveContact(prev => prev ? { ...prev, roomId } : null);
       }
 
       // 2. Insert message
@@ -527,17 +691,21 @@ export default function App() {
         ];
       });
 
-      setContacts(prev => prev.map(c => {
-        if (c.id === activeContact.id || c.roomId === roomId) {
-          return {
-            ...c,
-            roomId,
-            lastMessage: `You: ${text}`,
-            timestamp: formatMessageTime(newMsg.created_at),
-          };
-        }
-        return c;
-      }));
+      setContacts(prev => {
+        const updated = prev.map(c => {
+          if (c.id === currentContact.id || c.roomId === roomId) {
+            return {
+              ...c,
+              roomId,
+              lastMessage: `You: ${text}`,
+              timestamp: formatMessageTime(newMsg.created_at),
+              rawTimestamp: newMsg.created_at,
+            };
+          }
+          return c;
+        });
+        return sortContacts(updated);
+      });
 
     } catch (err) {
       console.error("Error in handleSend:", err);
@@ -547,6 +715,18 @@ export default function App() {
   const handleSelect = (contact) => {
     setActiveContact(contact);
     setActiveTab('chat');
+
+    // Reset local unread counts
+    setContacts(prev => prev.map(c => {
+      if (c.id === contact.id || (contact.roomId && c.roomId === contact.roomId)) {
+        return { ...c, unread: 0 };
+      }
+      return c;
+    }));
+
+    if (contact.roomId) {
+      markMessagesAsRead(contact.roomId);
+    }
   };
 
   const sendTypingStatus = (isTyping) => {
@@ -559,7 +739,7 @@ export default function App() {
     }
   };
 
-  const activeRoomTypingUserIds = typingUsers[activeContact?.roomId] || [];
+  const activeRoomTypingUserIds = typingUsers[currentContact?.roomId] || [];
   const activeRoomTypingUsers = activeRoomTypingUserIds
     .map(id => contacts.find(c => c.id === id))
     .filter(Boolean);
@@ -571,6 +751,7 @@ export default function App() {
         const { data: cu } = await supabase.from('company_users').select('id').eq('user_id', session.user.id).single();
         if (cu) setCompanyUserId(cu.id);
       }
+      setAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -581,10 +762,20 @@ export default function App() {
       } else {
         setCompanyUserId(null);
       }
+      setAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  if (authLoading) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 gap-3">
+        <span className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+        <p className="text-sm font-semibold text-slate-500 font-medium animate-pulse">Initializing chat session...</p>
+      </div>
+    );
+  }
 
   if (!session) {
     return <Login />;
@@ -631,10 +822,10 @@ export default function App() {
             <span className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
             <p className="text-sm font-semibold text-slate-500">Loading chat rooms...</p>
           </div>
-        ) : activeContact ? (
+        ) : currentContact ? (
           <>
             <ChatHeader
-              contact={activeContact}
+              contact={currentContact}
               activeTab={activeTab}
               onTabChange={setActiveTab}
             />
@@ -643,7 +834,7 @@ export default function App() {
               <>
                 <MessageArea
                   messages={allMessages}
-                  contact={activeContact}
+                  contact={currentContact}
                   currentUser={currentUser}
                   contacts={contacts}
                   typingUsers={activeRoomTypingUsers}
