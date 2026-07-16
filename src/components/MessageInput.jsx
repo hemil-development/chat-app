@@ -4,10 +4,12 @@ import { IconButton } from './ui/IconButton';
 
 const EMOJIS = ['😊', '👍', '❤️', '🎉', '😂', '🙏', '🔥', '✅', '💯', '🚀', '👀', '🤔'];
 
-export function MessageInput({ onSendMessage }) {
+export function MessageInput({ onSendMessage, onTyping }) {
   const [text, setText]           = useState('');
   const [emojiOpen, setEmojiOpen] = useState(false);
   const inputRef                  = useRef(null);
+  const typingTimeoutRef          = useRef(null);
+  const [isTyping, setIsTyping]   = useState(false);
 
   const send = () => {
     const t = text.trim();
@@ -15,7 +17,30 @@ export function MessageInput({ onSendMessage }) {
     onSendMessage(t);
     setText('');
     setEmojiOpen(false);
+    
+    if (onTyping) onTyping(false);
+    setIsTyping(false);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    
     inputRef.current?.focus();
+  };
+
+  const handleTextChange = (e) => {
+    setText(e.target.value);
+    
+    if (onTyping) {
+      if (!isTyping) {
+        setIsTyping(true);
+        onTyping(true);
+      }
+      
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      
+      typingTimeoutRef.current = setTimeout(() => {
+        setIsTyping(false);
+        onTyping(false);
+      }, 3000);
+    }
   };
 
   const onKey = (e) => {
@@ -38,7 +63,7 @@ export function MessageInput({ onSendMessage }) {
             ref={inputRef}
             placeholder="Message..."
             value={text}
-            onChange={e => setText(e.target.value)}
+            onChange={handleTextChange}
             onKeyDown={onKey}
             rows={1}
             style={{ resize: 'none' }}

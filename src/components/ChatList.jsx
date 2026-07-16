@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Search, Edit } from 'lucide-react';
 import clsx from 'clsx';
 import { ConvItem } from './chat/ConvItem';
-import { contacts } from '../data/mockData';
 
 const TABS = [
   { id: 'all',      label: 'All'      },
@@ -10,7 +9,7 @@ const TABS = [
   { id: 'channels', label: 'Channels' },
 ];
 
-export function ChatList({ activeContactId, onSelectContact }) {
+export function ChatList({ contacts = [], activeContactId, onSelectContact }) {
   const [activeTab, setActiveTab]     = useState('all');
   const [query, setQuery]             = useState('');
 

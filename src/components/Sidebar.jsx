@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { Avatar } from './ui/Avatar';
-import { currentUser } from '../data/mockData';
+import { currentUser as mockUser } from '../data/mockData';
 
 const NAV = [
   { id: 'chats',          icon: MessageSquare,  label: 'Messages',      badge: 3 },
@@ -13,7 +13,7 @@ const NAV = [
   { id: 'files',          icon: FolderOpen,      label: 'Files',         badge: 0 },
 ];
 
-export function Sidebar({ activeNav, onNavChange }) {
+export function Sidebar({ activeNav, onNavChange, currentUser = mockUser, unreadNotifications }) {
   return (
     <aside
       className="flex flex-col items-center w-[64px] flex-shrink-0 h-screen py-4 gap-2 bg-white"
@@ -31,24 +31,29 @@ export function Sidebar({ activeNav, onNavChange }) {
 
       {/* Nav */}
       <nav className="flex flex-col items-center gap-1.5 flex-1 w-full px-2">
-        {NAV.map(({ id, icon: Icon, label, badge }) => (
-          <button
-            key={id}
-            title={label}
-            onClick={() => onNavChange(id)}
-            className={clsx('nav-btn w-full', activeNav === id && 'active')}
-          >
-            <Icon size={20} strokeWidth={1.8} />
-            {badge > 0 && (
-              <span
-                className="absolute -top-1 -right-1 ubadge border-2 border-white"
-                style={{ fontSize: '9px', minWidth: '16px', height: '16px' }}
-              >
-                {badge}
-              </span>
-            )}
-          </button>
-        ))}
+        {NAV.map(({ id, icon: Icon, label, badge }) => {
+          const displayBadge = id === 'notifications'
+            ? (unreadNotifications !== undefined ? unreadNotifications : badge)
+            : badge;
+          return (
+            <button
+              key={id}
+              title={label}
+              onClick={() => onNavChange(id)}
+              className={clsx('nav-btn w-full', activeNav === id && 'active')}
+            >
+              <Icon size={20} strokeWidth={1.8} />
+              {displayBadge > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 ubadge border-2 border-white"
+                  style={{ fontSize: '9px', minWidth: '16px', height: '16px' }}
+                >
+                  {displayBadge}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </nav>
 
       {/* Bottom */}

@@ -12,7 +12,26 @@ const MOCK_NOTIFICATIONS = [
   { id: 8, name: 'Huzefa', action: 'Reacted To Your Message', preview: 'Happy Birthday @Huzefa', time: 'Yesterday', color: '#10b981', initial: 'H', emoji: '😁' },
 ];
 
-export function NotificationList() {
+export function NotificationList({ notifications = [], onSelectChat, contacts = [] }) {
+  const displayNotifications = notifications.length > 0 ? notifications : MOCK_NOTIFICATIONS;
+
+  const handleNotificationClick = (n) => {
+    if (!onSelectChat) return;
+    
+    // 1. Redirect using linkId if present (from database)
+    if (n.linkId) {
+      onSelectChat(n.linkId);
+      return;
+    }
+    
+    // 2. Otherwise fallback to matching colleague by name
+    const queryName = n.name.toLowerCase();
+    const match = contacts.find(c => c.name.toLowerCase().includes(queryName));
+    if (match) {
+      onSelectChat(match.id);
+    }
+  };
+
   return (
     <div className="flex flex-col w-[280px] flex-shrink-0 bg-[#f8fafc] h-screen border-r border-[#e2e8f0]">
       {/* Header Area */}
@@ -34,8 +53,12 @@ export function NotificationList() {
 
       {/* List */}
       <div className="flex-1 overflow-y-auto py-1 px-2 space-y-0.5">
-        {MOCK_NOTIFICATIONS.map(n => (
-          <div key={n.id} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-[#f1f5f9] cursor-pointer transition-colors group">
+        {displayNotifications.map(n => (
+          <div
+            key={n.id}
+            onClick={() => handleNotificationClick(n)}
+            className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-[#f1f5f9] cursor-pointer transition-colors group"
+          >
             <div className="relative flex-shrink-0 mt-0.5">
               <Avatar initials={n.initial} color={n.color} size="sm" borderColor="#f8fafc" />
               <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-white border border-[#e2e8f0] rounded-full flex items-center justify-center text-[9px] shadow-sm">
