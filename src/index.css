@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  html {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body { margin: 0; overflow: hidden; background: #ffffff; color: #0f172a; }
+
+  ::-webkit-scrollbar       { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
+}
+
+@layer components {
+  /* Sidebar nav button */
+  .nav-btn {
+    @apply relative flex items-center justify-center w-9 h-9 rounded-lg
+           transition-all duration-150 cursor-pointer;
+    color: #64748b;
+  }
+  .nav-btn:hover  { background-color: #f1f5f9; color: #0f172a; }
+  .nav-btn.active { background-color: #e2e8f0; color: #0f172a; font-weight: 600; }
+
+  /* Conv item */
+  .conv-item {
+    @apply flex items-center gap-2.5 px-2 py-[7px] rounded-lg mx-1.5
+           cursor-pointer transition-all duration-100 select-none;
+    color: #475569;
+  }
+  .conv-item:hover  { background-color: #f8fafc; color: #0f172a; }
+  .conv-item.active { background-color: #f1f5f9; color: #0f172a; font-weight: 500; }
+
+  /* Unread badge */
+  .ubadge {
+    @apply inline-flex items-center justify-center rounded-full
+           text-white font-bold tabular-nums;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 9px;
+    line-height: 1;
+    background-color: #4f46e5;
+  }
+
+  /* Avatar */
+  .av {
+    @apply flex-shrink-0 flex items-center justify-center
+           font-semibold text-white select-none leading-none;
+  }
+
+  /* Message input container */
+  .msg-box {
+    @apply flex flex-col rounded-xl transition-all duration-150;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+  }
+  .msg-box:focus-within {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.15);
+  }
+
+  /* Chip */
+  .chip {
+    @apply inline-flex items-center rounded-md border font-semibold uppercase tracking-wide;
+    font-size: 9px;
+    line-height: 12px;
+    padding: 2px 6px;
+  }
+}
