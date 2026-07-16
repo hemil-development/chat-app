@@ -3,12 +3,11 @@ import {
   FolderOpen, Settings,
 } from 'lucide-react';
 import clsx from 'clsx';
-import { Avatar } from './Avatar';
+import { Avatar } from './ui/Avatar';
 import { currentUser } from '../data/mockData';
 
 const NAV = [
   { id: 'chats',          icon: MessageSquare,  label: 'Messages',      badge: 3 },
-  { id: 'contacts',       icon: Users,           label: 'Contacts',      badge: 0 },
   { id: 'notifications',  icon: Bell,            label: 'Notifications', badge: 1 },
   { id: 'starred',        icon: Star,            label: 'Starred',       badge: 0 },
   { id: 'files',          icon: FolderOpen,      label: 'Files',         badge: 0 },

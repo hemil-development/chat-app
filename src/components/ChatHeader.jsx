@@ -1,6 +1,6 @@
 import { Star, FolderOpen, MessageSquare } from 'lucide-react';
 import clsx from 'clsx';
-import { Avatar } from './Avatar';
+import { Avatar } from './ui/Avatar';
 
 const TABS = [
   { id: 'chat',    icon: MessageSquare, label: 'Chat'    },

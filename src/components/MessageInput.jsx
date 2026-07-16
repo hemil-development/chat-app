@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Paperclip, Smile, Send, AtSign, Mic, Bold, Italic } from 'lucide-react';
+import { IconButton } from './ui/IconButton';
 
 const EMOJIS = ['😊', '👍', '❤️', '🎉', '😂', '🙏', '🔥', '✅', '💯', '🚀', '👀', '🤔'];
 
@@ -50,13 +51,13 @@ export function MessageInput({ onSendMessage }) {
         <div className="flex items-center justify-between px-2 pb-2 mt-1">
           {/* Left tools */}
           <div className="flex items-center gap-1">
-            <ToolBtn icon={Bold}       title="Bold"   />
-            <ToolBtn icon={Italic}     title="Italic" />
+            <IconButton icon={Bold}       title="Bold"   />
+            <IconButton icon={Italic}     title="Italic" />
             <div className="w-px h-4 bg-[#e2e8f0] mx-1" />
-            <ToolBtn icon={Paperclip}  title="Attach file" />
-            <ToolBtn icon={AtSign}     title="Mention"     />
+            <IconButton icon={Paperclip}  title="Attach file" />
+            <IconButton icon={AtSign}     title="Mention"     />
             <div className="relative">
-              <ToolBtn
+              <IconButton
                 icon={Smile}
                 title="Emoji"
                 onClick={() => setEmojiOpen(v => !v)}
@@ -98,18 +99,5 @@ export function MessageInput({ onSendMessage }) {
         </div>
       </div>
     </div>
-  );
-}
-
-function ToolBtn({ icon: Icon, title, onClick, active }) {
-  return (
-    <button
-      title={title}
-      onClick={onClick}
-      className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors
-        ${active ? 'bg-[#f1f5f9] text-[#0f172a]' : 'text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#0f172a]'}`}
-    >
-      <Icon size={16} strokeWidth={2} />
-    </button>
   );
 }

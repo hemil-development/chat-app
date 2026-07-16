@@ -1,7 +1,7 @@
 import { Star, FileText, MessageSquare } from 'lucide-react';
 import { starredMessages } from '../data/mockData';
 import { currentUser, contacts } from '../data/mockData';
-import { Avatar } from './Avatar';
+import { Avatar } from './ui/Avatar';
 import clsx from 'clsx';
 
 export function StarredPanel() {
