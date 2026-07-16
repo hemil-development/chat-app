@@ -4,17 +4,16 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { Avatar } from './ui/Avatar';
-import { currentUser } from '../data/mockData';
 import { supabase } from '../lib/supabase';
 
 const NAV = [
-  { id: 'chats',          icon: MessageSquare,  label: 'Messages',      badge: 3 },
-  { id: 'notifications',  icon: Bell,            label: 'Notifications', badge: 1 },
-  { id: 'starred',        icon: Star,            label: 'Starred',       badge: 0 },
-  { id: 'files',          icon: FolderOpen,      label: 'Files',         badge: 0 },
+  { id: 'chats',          icon: MessageSquare,  label: 'Messages' },
+  { id: 'notifications',  icon: Bell,            label: 'Notifications' },
+  { id: 'starred',        icon: Star,            label: 'Starred' },
+  { id: 'files',          icon: FolderOpen,      label: 'Files' },
 ];
 
-export function Sidebar({ activeNav, onNavChange }) {
+export function Sidebar({ activeNav, onNavChange, currentUser, unreadNotifications = 0 }) {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
   };
@@ -36,24 +35,27 @@ export function Sidebar({ activeNav, onNavChange }) {
 
       {/* Nav */}
       <nav className="flex flex-col items-center gap-1.5 flex-1 w-full px-2">
-        {NAV.map(({ id, icon: Icon, label, badge }) => (
-          <button
-            key={id}
-            title={label}
-            onClick={() => onNavChange(id)}
-            className={clsx('nav-btn w-full', activeNav === id && 'active')}
-          >
-            <Icon size={20} strokeWidth={1.8} />
-            {badge > 0 && (
-              <span
-                className="absolute -top-1 -right-1 ubadge border-2 border-white"
-                style={{ fontSize: '9px', minWidth: '16px', height: '16px' }}
-              >
-                {badge}
-              </span>
-            )}
-          </button>
-        ))}
+        {NAV.map(({ id, icon: Icon, label }) => {
+          const badgeValue = id === 'notifications' ? unreadNotifications : 0;
+          return (
+            <button
+              key={id}
+              title={label}
+              onClick={() => onNavChange(id)}
+              className={clsx('nav-btn w-full', activeNav === id && 'active')}
+            >
+              <Icon size={20} strokeWidth={1.8} />
+              {badgeValue > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 ubadge border-2 border-white"
+                  style={{ fontSize: '9px', minWidth: '16px', height: '16px' }}
+                >
+                  {badgeValue}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </nav>
 
       {/* Bottom */}
@@ -65,13 +67,15 @@ export function Sidebar({ activeNav, onNavChange }) {
           <LogOut size={18} strokeWidth={1.8} />
         </button>
         <div className="mt-1 cursor-pointer hover:opacity-90 transition-opacity">
-          <Avatar
-            initials={currentUser.initials}
-            color={currentUser.color}
-            status={currentUser.status}
-            size="sm"
-            borderColor="#ffffff"
-          />
+          {currentUser && (
+            <Avatar
+              initials={currentUser.initials}
+              color={currentUser.color}
+              status={currentUser.status}
+              size="sm"
+              borderColor="#ffffff"
+            />
+          )}
         </div>
       </div>
     </aside>

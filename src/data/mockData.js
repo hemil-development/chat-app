@@ -1,7 +1,7 @@
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
 export const currentUser = {
-  id: 'me',
+  id: '00000000-0000-0000-0000-000000000000',
   name: 'Sumit Pandya',
   initials: 'SP',
   color: '#6366f1',
@@ -11,7 +11,7 @@ export const currentUser = {
 
 export const contacts = [
   {
-    id: 'c1',
+    id: '11111111-1111-1111-1111-111111111111',
     name: 'Nehal Shetty',
     initials: 'NS',
     color: '#10b981',
@@ -24,7 +24,7 @@ export const contacts = [
     pinned: true,
   },
   {
-    id: 'c2',
+    id: '22222222-2222-2222-2222-222222222222',
     name: 'Parth Chouhan',
     initials: 'PC',
     color: '#8b5cf6',
@@ -37,7 +37,7 @@ export const contacts = [
     pinned: false,
   },
   {
-    id: 'c3',
+    id: '33333333-3333-3333-3333-333333333333',
     name: 'Rishi Patel',
     initials: 'RP',
     color: '#f59e0b',
@@ -50,7 +50,7 @@ export const contacts = [
     pinned: false,
   },
   {
-    id: 'c4',
+    id: '44444444-4444-4444-4444-444444444444',
     name: 'Tracker Log In',
     initials: 'TL',
     color: '#06b6d4',
@@ -63,7 +63,7 @@ export const contacts = [
     pinned: false,
   },
   {
-    id: 'c5',
+    id: '55555555-5555-5555-5555-555555555555',
     name: 'Digipie Website',
     initials: 'DW',
     color: '#ef4444',
@@ -76,7 +76,7 @@ export const contacts = [
     pinned: false,
   },
   {
-    id: 'c6',
+    id: '66666666-6666-6666-6666-666666666666',
     name: 'Akash Soni',
     initials: 'AS',
     color: '#374151',
@@ -89,7 +89,7 @@ export const contacts = [
     pinned: false,
   },
   {
-    id: 'c7',
+    id: '77777777-7777-7777-7777-777777777777',
     name: 'Web Team · Daily Worklog',
     initials: 'WT',
     color: '#3b82f6',
@@ -103,7 +103,7 @@ export const contacts = [
     isChannel: true,
   },
   {
-    id: 'c8',
+    id: '88888888-8888-8888-8888-888888888888',
     name: 'Random',
     initials: 'RA',
     color: '#84cc16',
@@ -117,7 +117,7 @@ export const contacts = [
     isChannel: true,
   },
   {
-    id: 'c9',
+    id: '99999999-9999-9999-9999-999999999999',
     name: 'Tanvi | Ashish',
     initials: 'TA',
     color: '#f97316',
@@ -130,7 +130,7 @@ export const contacts = [
     pinned: false,
   },
   {
-    id: 'c10',
+    id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
     name: 'Meeting Announcement O...',
     initials: 'MA',
     color: '#64748b',
@@ -144,7 +144,7 @@ export const contacts = [
     isChannel: true,
   },
   {
-    id: 'c11',
+    id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     name: 'Neil | SaaS | Shahid',
     initials: 'NS',
     color: '#0ea5e9',
@@ -157,7 +157,7 @@ export const contacts = [
     pinned: false,
   },
   {
-    id: 'c12',
+    id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
     name: 'Web Inquiries',
     initials: 'WI',
     color: '#a855f7',
