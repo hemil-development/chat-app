@@ -58,7 +58,7 @@ export function FileViewer({ file, onClose }) {
           return renderAsync(blob, docxContainerRef.current, undefined, {
             className: 'docx-page',
             inWrapper: true,
-            ignoreWidth: false,
+            ignoreWidth: window.innerWidth < 768,
             ignoreHeight: false,
             ignoreFonts: false,
             breakPages: true,
@@ -120,23 +120,23 @@ export function FileViewer({ file, onClose }) {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-black/90 backdrop-blur-sm animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-b from-black/50 to-transparent">
-        <div className="flex flex-col text-white">
-          <span className="font-semibold text-[15px]">{file.name}</span>
+      <div className="flex items-center justify-between gap-3 px-4 py-4 md:px-6 bg-gradient-to-b from-black/80 to-transparent relative z-10 shrink-0">
+        <div className="flex flex-col text-white min-w-0 flex-1">
+          <span className="font-semibold text-[14px] md:text-[15px] truncate">{file.name}</span>
           <span className="text-[12px] text-white/60">{file.size}</span>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4 shrink-0">
           <a
             href={file.url}
             target="_blank"
             rel="noopener noreferrer"
             download={file.name}
-            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors text-[13px] font-medium"
+            className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors text-[12px] md:text-[13px] font-medium"
             onClick={(e) => e.stopPropagation()}
           >
-            <Download size={16} />
-            Download
+            <Download size={14} className="md:w-4 md:h-4" />
+            <span className="hidden sm:inline">Download</span>
           </a>
 
           <button
@@ -150,9 +150,8 @@ export function FileViewer({ file, onClose }) {
 
       {/* Content Area */}
       <div
-        className={`flex-1 overflow-hidden cursor-zoom-out ${
-          isDocx ? '' : 'flex items-center justify-center p-6'
-        }`}
+        className={`flex-1 overflow-hidden cursor-zoom-out ${isDocx ? '' : 'flex items-center justify-center p-6'
+          }`}
         onClick={onClose}
       >
         <div
@@ -219,11 +218,10 @@ export function FileViewer({ file, onClose }) {
                       <button
                         key={name}
                         onClick={() => setActiveSheet(i)}
-                        className={`px-3 py-1.5 text-[13px] rounded-t-md font-medium whitespace-nowrap transition-colors ${
-                          i === activeSheet
+                        className={`px-3 py-1.5 text-[13px] rounded-t-md font-medium whitespace-nowrap transition-colors ${i === activeSheet
                             ? 'bg-white text-indigo-600 border border-b-0 border-gray-200'
                             : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                          }`}
                       >
                         {name}
                       </button>
@@ -270,6 +268,17 @@ export function FileViewer({ file, onClose }) {
           box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
           border: 1px solid rgba(255, 255, 255, 0.08);
           margin: 0 !important;
+          max-width: 100%;
+        }
+
+        @media (max-width: 768px) {
+          .docx-render {
+            padding: 16px;
+          }
+          .docx-render .docx-page {
+            width: 100% !important;
+            min-height: auto !important;
+          }
         }
 
         .xlsx-preview table { border-collapse: collapse; font-size: 13px; }
@@ -279,6 +288,10 @@ export function FileViewer({ file, onClose }) {
           white-space: nowrap;
         }
         .xlsx-preview tr:nth-child(even) { background: #fafafa; }
+        .docx-page-wrapper{
+            background:transparent !important;
+            padding:0;
+        }
       `}</style>
     </div>
   );

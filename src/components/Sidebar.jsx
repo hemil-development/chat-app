@@ -20,11 +20,13 @@ export function Sidebar({ activeNav, onNavChange, currentUser, unreadNotificatio
 
   return (
     <aside
-      className="flex flex-col items-center w-[64px] flex-shrink-0 h-screen py-4 gap-2 bg-white"
-      style={{ borderRight: '1px solid #e2e8f0' }}
+      className="flex flex-row md:flex-col items-center justify-between md:justify-start 
+                 w-full h-[60px] md:w-[64px] md:h-[100dvh] 
+                 px-4 md:px-0 py-0 md:py-4 md:gap-2 
+                 bg-white border-t md:border-t-0 md:border-r border-[#e2e8f0]"
     >
       {/* Logo */}
-      <div className="mb-4 flex-shrink-0">
+      <div className="hidden md:flex mb-4 flex-shrink-0">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer select-none shadow-sm"
           style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)' }}
@@ -34,7 +36,7 @@ export function Sidebar({ activeNav, onNavChange, currentUser, unreadNotificatio
       </div>
 
       {/* Nav */}
-      <nav className="flex flex-col items-center gap-1.5 flex-1 w-full px-2">
+      <nav className="flex flex-row md:flex-col items-center justify-around md:justify-start gap-1 md:gap-1.5 flex-1 md:flex-none w-full md:px-2">
         {NAV.map(({ id, icon: Icon, label }) => {
           const badgeValue = id === 'notifications' ? unreadNotifications : 0;
           return (
@@ -42,7 +44,7 @@ export function Sidebar({ activeNav, onNavChange, currentUser, unreadNotificatio
               key={id}
               title={label}
               onClick={() => onNavChange(id)}
-              className={clsx('nav-btn w-full', activeNav === id && 'active')}
+              className={clsx('nav-btn w-12 md:w-full flex justify-center', activeNav === id && 'active')}
             >
               <Icon size={20} strokeWidth={1.8} />
               {badgeValue > 0 && (
@@ -59,7 +61,7 @@ export function Sidebar({ activeNav, onNavChange, currentUser, unreadNotificatio
       </nav>
 
       {/* Bottom */}
-      <div className="flex flex-col items-center gap-2 w-full px-2 mt-auto">
+      <div className="hidden md:flex flex-col items-center gap-2 w-full px-2 mt-auto">
         <button title="Settings" className="nav-btn w-full">
           <Settings size={18} strokeWidth={1.8} />
         </button>

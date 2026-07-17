@@ -18,7 +18,7 @@ export function FileCard({ file, isMe, onViewFile }) {
     <div 
       onClick={() => onViewFile && onViewFile(file)}
       className={clsx(
-        'flex flex-col gap-2 p-3 mt-1 rounded-xl shadow-sm hover:shadow-md transition-shadow animate-slide-up max-w-[340px] cursor-pointer',
+        'flex flex-col gap-2 p-2.5 md:p-3 mt-1 rounded-xl shadow-sm hover:shadow-md transition-shadow animate-slide-up w-[240px] sm:w-[280px] md:w-[320px] max-w-full cursor-pointer',
         isMe 
           ? 'bg-[#4f46e5] border border-[#4338ca]' 
           : 'bg-white border border-[#e2e8f0]'

@@ -2,15 +2,26 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback } f
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { getUserColor, formatMessageTime, formatBytes, sortContacts } from '../utils/helpers';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const ChatContext = createContext();
 
 export function ChatProvider({ children }) {
   const { companyUserId } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   
-  const [activeNav,     setActiveNav]     = useState('chats');
+  let activeNav = 'chats';
+  if (location.pathname.startsWith('/notifications')) activeNav = 'notifications';
+  else if (location.pathname.startsWith('/starred')) activeNav = 'starred';
+  else if (location.pathname.startsWith('/files')) activeNav = 'files';
+
+  let activeContactId = null;
+  if (location.pathname.startsWith('/chats/')) {
+    activeContactId = location.pathname.split('/')[2];
+  }
+
   const [contacts,      setContacts]      = useState([]);
-  const [activeContact, setActiveContact] = useState(null);
   const [activeTab,     setActiveTab]     = useState('chat');
   const [allMessages,   setAllMessages]   = useState([]);
   const [loading,       setLoading]       = useState(true);
@@ -27,7 +38,11 @@ export function ChatProvider({ children }) {
   const typingTimeoutsRef = useRef({});
   const activeChannelRef  = useRef(null);
 
-  const currentContact = contacts.find(c => c.id === activeContact?.id) || activeContact;
+  const activeContact = contacts.find(c => c.id === activeContactId) || null;
+  const currentContact = activeContact;
+
+  const setActiveNav = useCallback((nav) => navigate(`/${nav}`), [navigate]);
+  
   const activeRoomTypingUserIds = typingUsers[currentContact?.roomId] || [];
   const activeRoomTypingUsers = activeRoomTypingUserIds
     .map(id => contacts.find(c => c.id === id))
@@ -235,10 +250,6 @@ export function ChatProvider({ children }) {
         const merged = [...groupContacts, ...directContacts];
         setContacts(sortContacts(merged));
 
-        if (merged.length > 0) {
-          setActiveContact(merged[0]);
-        }
-
         // 7. Fetch notifications
         try {
           const { data: dbNotifs } = await supabase
@@ -333,17 +344,22 @@ export function ChatProvider({ children }) {
   };
 
   const handleSelect = useCallback((contact) => {
-    setActiveContact(contact);
     setActiveTab('chat');
-    setActiveNav('chats');
+    if (contact) {
+      navigate(`/chats/${contact.id}`);
+    } else {
+      navigate(`/chats`);
+    }
     setContacts(prev => prev.map(c => {
-      if (c.id === contact.id || (contact.roomId && c.roomId === contact.roomId)) {
+      if (contact && (c.id === contact.id || (contact.roomId && c.roomId === contact.roomId))) {
         return { ...c, unread: 0 };
       }
       return c;
     }));
-    if (contact.roomId) markMessagesAsRead(contact.roomId);
-  }, [markMessagesAsRead, setActiveNav]);
+    if (contact?.roomId) markMessagesAsRead(contact.roomId);
+  }, [markMessagesAsRead, navigate]);
+
+  const setActiveContact = handleSelect;
 
   const getOrCreateRoomForContact = async (contact) => {
     if (contact.roomId) return contact.roomId;

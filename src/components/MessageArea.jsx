@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
 import { Check, CheckCheck, Search, X, ChevronUp, ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
+import { Virtuoso } from 'react-virtuoso';
 import { Avatar } from './ui/Avatar';
 import { DateDivider } from './chat/DateDivider';
 import { MessageBubble } from './chat/MessageBubble';
@@ -38,18 +39,30 @@ function groupMessages(messages) {
 }
 
 export function MessageArea({ messages, contact, currentUser, contacts = [], typingUsers = [], onViewFile, isSearchOpen, setIsSearchOpen }) {
-  const endRef = useRef(null);
-  const containerRef = useRef(null);
+  const virtuosoRef = useRef(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
 
-  // Auto scroll to bottom when new messages arrive (if not searching)
-  useEffect(() => { 
-    if (!isSearchOpen && !searchQuery) {
-      endRef.current?.scrollIntoView({ behavior: 'auto' }); 
-    }
-  }, [messages, isSearchOpen, searchQuery]);
+  // Flatten for virtualization
+  const flattenedItems = useMemo(() => {
+    const groups = groupMessages(messages);
+    const items = [];
+    let lastDateLabel = null;
+
+    groups.forEach(group => {
+      const showDivider = group.dateLabel !== lastDateLabel;
+      if (showDivider) {
+        lastDateLabel = group.dateLabel;
+      }
+      items.push({
+        ...group,
+        showDivider,
+        id: group.items[0]?.id || Math.random() // Unique ID
+      });
+    });
+    return items;
+  }, [messages]);
 
   // Find matches
   const matches = useMemo(() => {
@@ -62,6 +75,13 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
     });
   }, [messages, searchQuery]);
 
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsMounted(true), 300);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Handle Match Navigation
   useEffect(() => {
     if (matches.length > 0) {
@@ -72,17 +92,18 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
   }, [matches]);
 
   useEffect(() => {
-    if (matches.length > 0 && matches[activeMatchIndex]) {
+    if (matches.length > 0 && matches[activeMatchIndex] && virtuosoRef.current) {
       const matchId = matches[activeMatchIndex].id;
-      const el = document.getElementById(`msg-${matchId}`);
-      if (el && containerRef.current) {
-        // Scroll the container so the element is roughly in the middle
-        const container = containerRef.current;
-        const offset = el.offsetTop - (container.clientHeight / 2);
-        container.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
+      const groupIndex = flattenedItems.findIndex(g => g.items.some(m => m.id === matchId));
+      if (groupIndex !== -1) {
+        virtuosoRef.current.scrollToIndex({
+          index: groupIndex,
+          align: 'center',
+          behavior: 'smooth'
+        });
       }
     }
-  }, [activeMatchIndex, matches]);
+  }, [activeMatchIndex, matches, flattenedItems]);
 
   const handleNextMatch = () => {
     setActiveMatchIndex(prev => (prev < matches.length - 1 ? prev + 1 : 0));
@@ -106,20 +127,6 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
     });
   };
 
-  const groups = groupMessages(messages);
-
-  let lastDateLabel = null;
-  const groupsWithDivider = groups.map(group => {
-    const showDivider = group.dateLabel !== lastDateLabel;
-    if (showDivider) {
-      lastDateLabel = group.dateLabel;
-    }
-    return {
-      ...group,
-      showDivider
-    };
-  });
-
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-white relative">
       {/* Inline Search Bar */}
@@ -135,9 +142,9 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
             className="flex-1 ml-3 bg-transparent border-none outline-none text-[14px] text-[#0f172a] placeholder-[#94a3b8]"
           />
           {searchQuery && (
-            <div className="flex items-center gap-2 mr-3 text-[12px] font-medium text-[#64748b]">
-              <span>{matches.length > 0 ? activeMatchIndex + 1 : 0} / {matches.length}</span>
-              <div className="flex items-center border border-[#e2e8f0] rounded-lg overflow-hidden bg-[#f8fafc]">
+            <div className="flex items-center gap-2 mr-3 text-[12px] font-medium text-[#64748b] flex-shrink-0">
+              <span className="whitespace-nowrap">{matches.length > 0 ? activeMatchIndex + 1 : 0} / {matches.length}</span>
+              <div className="flex items-center border border-[#e2e8f0] rounded-lg overflow-hidden bg-[#f8fafc] flex-shrink-0">
                 <button 
                   onClick={handlePrevMatch} 
                   disabled={matches.length === 0}
@@ -168,79 +175,102 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
         </div>
       )}
 
-      <div ref={containerRef} className="flex-1 overflow-y-auto py-6">
-        {groupsWithDivider.map((group, gi) => {
-        const isMe = group.senderId === 'me' || group.senderId === currentUser?.id;
-        const sender = getSender(group.senderId);
-
-        return (
-          <div key={gi}>
-            {group.showDivider && <DateDivider label={group.dateLabel} />}
-            <div className={clsx('flex gap-3 px-6 py-2 group transition-colors duration-150', isMe && 'flex-row-reverse')}>
-
-              {/* Avatar - Only for incoming messages */}
-              <div className={clsx('flex-shrink-0 w-8 self-start mt-0.5', isMe && 'hidden')}>
-                <Avatar
-                  initials={sender.initials}
-                  color={sender.color}
-                  size="sm"
-                  borderColor="#ffffff"
-                />
-              </div>
-
-              {/* Messages */}
-              <div className={clsx('flex flex-col gap-1 w-full max-w-[70%]', isMe ? 'items-end' : 'items-start')}>
-                {/* Header */}
-                {!isMe && (
-                  <div className="flex items-baseline gap-2 mb-0.5 ml-1">
-                    <span className="text-[13px] font-bold text-[#0f172a]">{sender.name}</span>
-                  </div>
-                )}
-
-                {/* Bubbles */}
-                {group.items.map(msg => {
-                  const seen = isSeen(msg);
-                  const recipientOnline = contact?.status === 'online';
-                  const tick = seen ? (
-                    <CheckCheck size={14} className="text-[#38bdf8]" />
-                  ) : recipientOnline ? (
-                    <CheckCheck size={13} className="text-indigo-200/80" />
-                  ) : (
-                    <Check size={13} className="text-indigo-200/80" />
-                  );
-
-                  const isHighlighted = matches.length > 0 && matches[activeMatchIndex]?.id === msg.id;
-
+      {/* Virtualized Message Area */}
+      <div className="flex-1 min-h-0">
+        {flattenedItems.length > 0 ? (
+          <Virtuoso
+            ref={virtuosoRef}
+            data={flattenedItems}
+            computeItemKey={(index, item) => item.id}
+            initialTopMostItemIndex={flattenedItems.length - 1}
+            followOutput={(isAtBottom) => {
+              if (!isMounted) return 'auto';
+              return isAtBottom ? 'smooth' : false;
+            }}
+            alignToBottom={true}
+            style={{ height: '100%' }}
+            components={{
+              Header: () => <div className="h-4" />,
+              Footer: () => {
+                if (typingUsers && typingUsers.length > 0) {
                   return (
-                    <div key={msg.id} id={`msg-${msg.id}`}>
-                      <MessageBubble
-                        message={msg}
-                        isMe={isMe}
-                        tick={tick}
-                        onViewFile={onViewFile}
-                        isHighlighted={isHighlighted}
-                      />
+                    <div className="flex items-end gap-3 px-6 py-2 pb-6 animate-fade-in">
+                      <Avatar initials={typingUsers[0].initials} color={typingUsers[0].color} size="sm" borderColor="#ffffff" />
+                      <div className="flex items-center gap-1.5 px-4 py-3 bg-[#f1f5f9] border border-[#e2e8f0] rounded-2xl rounded-bl-sm w-fit shadow-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#94a3b8] animate-bounce-1" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#94a3b8] animate-bounce-2" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#94a3b8] animate-bounce-3" />
+                      </div>
                     </div>
                   );
-                })}
-              </div>
-            </div>
-          </div>
-        );
-      })}
+                }
+                return <div className="h-6" />;
+              }
+            }}
+            itemContent={(index, group) => {
+              const isMe = group.senderId === 'me' || group.senderId === currentUser?.id;
+              const sender = getSender(group.senderId);
 
-      {/* Typing indicator */}
-      {typingUsers && typingUsers.length > 0 && (
-        <div className="flex items-end gap-3 px-6 py-2 animate-fade-in">
-          <Avatar initials={typingUsers[0].initials} color={typingUsers[0].color} size="sm" borderColor="#ffffff" />
-          <div className="flex items-center gap-1.5 px-4 py-3 bg-[#f1f5f9] border border-[#e2e8f0] rounded-2xl rounded-bl-sm w-fit shadow-sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#94a3b8] animate-bounce-1" />
-            <span className="w-1.5 h-1.5 rounded-full bg-[#94a3b8] animate-bounce-2" />
-            <span className="w-1.5 h-1.5 rounded-full bg-[#94a3b8] animate-bounce-3" />
-          </div>
-        </div>
-      )}
+              return (
+                <div className="pb-1 pt-1" key={group.id}>
+                  {group.showDivider && <DateDivider label={group.dateLabel} />}
+                  <div className={clsx('flex gap-3 px-6 py-1 group transition-colors duration-150', isMe && 'flex-row-reverse')}>
+                    {/* Avatar - Only for incoming messages */}
+                    <div className={clsx('flex-shrink-0 w-8 self-start mt-0.5', isMe && 'hidden')}>
+                      <Avatar
+                        initials={sender.initials}
+                        color={sender.color}
+                        size="sm"
+                        borderColor="#ffffff"
+                      />
+                    </div>
 
+                    {/* Messages */}
+                    <div className={clsx('flex flex-col gap-1 w-full max-w-[70%]', isMe ? 'items-end' : 'items-start')}>
+                      {/* Header */}
+                      {!isMe && (
+                        <div className="flex items-baseline gap-2 mb-0.5 ml-1">
+                          <span className="text-[13px] font-bold text-[#0f172a]">{sender.name}</span>
+                        </div>
+                      )}
+
+                      {/* Bubbles */}
+                      {group.items.map(msg => {
+                        const seen = isSeen(msg);
+                        const recipientOnline = contact?.status === 'online';
+                        const tick = seen ? (
+                          <CheckCheck size={14} className="text-[#38bdf8]" />
+                        ) : recipientOnline ? (
+                          <CheckCheck size={13} className="text-indigo-200/80" />
+                        ) : (
+                          <Check size={13} className="text-indigo-200/80" />
+                        );
+
+                        const isHighlighted = matches.length > 0 && matches[activeMatchIndex]?.id === msg.id;
+
+                        return (
+                          <div key={msg.id} id={`msg-${msg.id}`}>
+                            <MessageBubble
+                              message={msg}
+                              isMe={isMe}
+                              tick={tick}
+                              onViewFile={onViewFile}
+                              isHighlighted={isHighlighted}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            }}
+          />
+        ) : (
+          <div className="flex-1 flex items-center justify-center h-full">
+            <span className="text-[#94a3b8] text-sm">No messages yet.</span>
+          </div>
+        )}
       </div>
     </div>
   );

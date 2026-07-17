@@ -119,13 +119,29 @@ export function SearchPanel() {
               <p className="text-[15px] font-bold text-[#0f172a]">Search Messages</p>
               <p className="text-[13px] text-[#64748b] mt-1">Find specific keywords or phrases in this conversation.</p>
             </div>
+          ) : loading && results.length === 0 ? (
+            <div className="flex flex-col gap-3 animate-pulse">
+              <div className="w-32 h-4 bg-slate-200 rounded mb-2" />
+              {[1, 2, 3].map(i => (
+                <div key={i} className="p-4 bg-white border border-[#e2e8f0] rounded-xl flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-slate-200 shrink-0" />
+                  <div className="flex-1 flex flex-col gap-2">
+                    <div className="flex justify-between">
+                      <div className="w-24 h-4 bg-slate-200 rounded" />
+                      <div className="w-16 h-3 bg-slate-200 rounded" />
+                    </div>
+                    <div className="w-full h-3 bg-slate-200 rounded mt-1" />
+                    <div className="w-2/3 h-3 bg-slate-200 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-[13px] font-bold text-[#475569] uppercase tracking-wider">
                   {results.length > 0 ? 'Search Results' : 'No Results Found'}
                 </h3>
-                {loading && results.length === 0 && <Loader2 size={16} className="text-[#64748b] animate-spin" />}
               </div>
 
               {results.map((msg) => {

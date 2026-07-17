@@ -33,7 +33,7 @@ export function NotificationList({ notifications = [], onSelectChat, contacts = 
   };
 
   return (
-    <div className="flex flex-col w-[280px] flex-shrink-0 bg-[#f8fafc] h-screen border-r border-[#e2e8f0]">
+    <div className="flex flex-col w-full flex-shrink-0 h-full bg-transparent">
       {/* Header Area */}
       <div className="px-4 pt-4 pb-3">
         <div className="flex items-center justify-between mb-1">

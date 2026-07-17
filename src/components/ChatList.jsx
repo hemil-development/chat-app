@@ -12,7 +12,7 @@ const TABS = [
 ];
 
 export function ChatList({ contacts = [], activeContactId, onSelectContact }) {
-  const { handleCreateGroup } = useChat();
+  const { handleCreateGroup, loading } = useChat();
   const [activeTab, setActiveTab]     = useState('all');
   const [query, setQuery]             = useState('');
   const [showModal, setShowModal]     = useState(false);
@@ -26,7 +26,7 @@ export function ChatList({ contacts = [], activeContactId, onSelectContact }) {
   });
 
   return (
-    <div className="flex flex-col w-[280px] flex-shrink-0 bg-[#f8fafc] h-screen border-r border-[#e2e8f0]">
+    <div className="flex flex-col w-full flex-shrink-0 h-full bg-transparent">
 
       {/* Header Area */}
       <div className="px-4 pt-4 pb-2">
@@ -78,21 +78,36 @@ export function ChatList({ contacts = [], activeContactId, onSelectContact }) {
 
       {/* List */}
       <div className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
-        {filtered.length === 0 && (
+        {loading ? (
+          <div className="flex-1 overflow-hidden space-y-0.5 animate-pulse mt-2">
+            {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+              <div key={i} className="flex items-center gap-2.5 px-2 py-[7px] mx-1.5">
+                <div className="w-8 h-8 rounded-full bg-slate-200 shrink-0" />
+                <div className="flex-1 min-w-0 ml-1 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="w-24 h-3.5 bg-slate-200 rounded-sm" />
+                    <div className="w-8 h-2.5 bg-slate-200 rounded-sm" />
+                  </div>
+                  <div className="w-3/4 h-3 bg-slate-200 rounded-sm" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center py-10 text-center">
             <Search size={24} className="text-[#cbd5e1] mb-3" />
             <p className="text-[13px] text-[#64748b] font-medium">No results found</p>
           </div>
+        ) : (
+          filtered.map(c => (
+            <ConvItem
+              key={c.id}
+              contact={c}
+              isActive={c.id === activeContactId}
+              onClick={() => onSelectContact(c)}
+            />
+          ))
         )}
-
-        {filtered.map(c => (
-          <ConvItem
-            key={c.id}
-            contact={c}
-            isActive={c.id === activeContactId}
-            onClick={() => onSelectContact(c)}
-          />
-        ))}
       </div>
 
       <CreateGroupModal 

@@ -71,8 +71,19 @@ export function StarredPanel() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="animate-spin text-[#64748b]" size={24} />
+          <div className="grid gap-3 p-4 animate-pulse">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-start gap-4 p-4 bg-white border border-[#e2e8f0] rounded-xl">
+                <div className="w-10 h-10 rounded-full bg-slate-200 shrink-0" />
+                <div className="flex-1 min-w-0 mt-0.5 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-3.5 bg-slate-200 rounded-sm" />
+                    <div className="w-10 h-2.5 bg-slate-200 rounded-sm" />
+                  </div>
+                  <div className="w-3/4 h-3 bg-slate-200 rounded-sm mt-0.5" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : starredMessages.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-center">

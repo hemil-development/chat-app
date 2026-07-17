@@ -58,7 +58,7 @@ export function CreateGroupModal({ isOpen, onClose, contacts, onCreate }) {
       />
       
       {/* Drawer Panel */}
-      <div className="fixed top-0 right-0 h-full w-full max-w-[420px] z-50 bg-white shadow-2xl flex flex-col animate-slide-in-right border-l border-[#e2e8f0]">
+      <div className="fixed top-0 right-0 h-full w-full max-w-full md:max-w-[420px] z-50 bg-white shadow-2xl flex flex-col animate-slide-in-right border-l border-[#e2e8f0]">
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-[#e2e8f0]">

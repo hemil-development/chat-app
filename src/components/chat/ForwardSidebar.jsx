@@ -45,7 +45,7 @@ export function ForwardSidebar() {
   };
 
   return (
-    <div className="w-[320px] bg-white border-l border-[#e2e8f0] h-screen flex flex-col flex-shrink-0 animate-slide-left z-40 relative shadow-md">
+    <div className="w-full md:w-[320px] bg-white border-l border-[#e2e8f0] h-[100dvh] flex flex-col flex-shrink-0 animate-slide-left z-40 relative shadow-md">
       
       {/* Title Header */}
       <div className="px-5 py-4 border-b border-[#e2e8f0] flex items-center justify-between">
