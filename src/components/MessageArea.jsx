@@ -39,7 +39,7 @@ function groupMessages(messages) {
 
 export function MessageArea({ messages, contact, currentUser, contacts = [], typingUsers = [], onViewFile }) {
   const endRef = useRef(null);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'auto' }); }, [messages]);
 
   const getSender = (senderId) => {
     if (senderId === 'me' || senderId === currentUser?.id) return currentUser;

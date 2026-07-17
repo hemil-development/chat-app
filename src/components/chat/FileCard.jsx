@@ -1,4 +1,4 @@
-import { FileText, Download } from 'lucide-react';
+import { FileText, Download, Eye } from 'lucide-react';
 import clsx from 'clsx';
 
 const FILE_STYLE = {
@@ -49,7 +49,20 @@ export function FileCard({ file, isMe, onViewFile }) {
           </div>
         </div>
 
-        <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onViewFile) onViewFile(file);
+            }}
+            className={clsx(
+              'w-7 h-7 flex items-center justify-center rounded-md transition-all',
+              isMe ? 'text-white hover:bg-white/20' : 'text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#0f172a]'
+            )}
+          >
+            <Eye size={14} strokeWidth={2} />
+          </button>
+          
           <a
             href={file.url || '#'}
             target="_blank"
