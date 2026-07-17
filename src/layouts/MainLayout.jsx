@@ -15,6 +15,7 @@ import { StarredSidebar }   from '../components/chat/StarredSidebar';
 import { FilesSidebar }     from '../components/chat/FilesSidebar';
 import { FileViewer }       from '../components/chat/FileViewer';
 import { Login }            from '../components/Login';
+import { ForwardSidebar }   from '../components/chat/ForwardSidebar';
 
 export function MainLayout() {
   const { session, authLoading } = useAuth();
@@ -31,7 +32,8 @@ export function MainLayout() {
     currentUser, currentContact,
     activeRoomTypingUsers,
     chatAlert, setChatAlert,
-    handleSend, handleFileUpload, handleSelect, sendTypingStatus
+    handleSend, handleFileUpload, handleSelect, sendTypingStatus,
+    forwardingMessage
   } = useChat();
 
   if (authLoading) {
@@ -160,9 +162,11 @@ export function MainLayout() {
         )}
       </main>
       
-      {viewingFile && (
-        <FileViewer file={viewingFile} onClose={() => setViewingFile(null)} />
-      )}
+      {/* Forward Message Sidebar */}
+      {forwardingMessage && <ForwardSidebar />}
+
+      {/* File Viewer Modal Overlay */}
+      {viewingFile && <FileViewer file={viewingFile} onClose={() => setViewingFile(null)} />}
     </div>
   );
 }

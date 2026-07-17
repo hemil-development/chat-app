@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { FileCard } from './FileCard';
-import { Smile, ChevronLeft, ChevronRight, MoreVertical, Pencil, Quote, Share2, Copy, Star, Trash2 } from 'lucide-react';
+import { Smile, ChevronLeft, ChevronRight, MoreVertical, Pencil, Quote, Share2, Copy, Star, Trash2, CornerUpRight } from 'lucide-react';
 import { useChat } from '../../context/ChatContext';
 
 const REACTION_PAGES = [
@@ -78,13 +78,15 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
     handleToggleStar, 
     handleDeleteMessage,
     setChatAlert,
-    contacts
+    contacts,
+    setForwardingMessage
   } = useChat();
 
   const [showPopover, setShowPopover] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [page, setPage] = useState(0);
   const [hoveredReaction, setHoveredReaction] = useState(null);
+  const [menuDirection, setMenuDirection] = useState('down'); // 'up' or 'down'
 
   // Close context menu and reactions popover when clicking anywhere else or scrolling
   useEffect(() => {
@@ -143,6 +145,12 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
     if (isImage && message.file?.url) {
       bubbleContent = (
         <div className="flex flex-col items-start gap-1">
+          {message.isForwarded && (
+            <div className="text-[10px] font-semibold text-slate-400 flex items-center gap-1 mb-1 pl-1 select-none">
+              <CornerUpRight size={11} strokeWidth={2.5} />
+              <span>Forwarded</span>
+            </div>
+          )}
           <div 
             onClick={() => onViewFile && onViewFile(message.file)}
             className={clsx(
@@ -183,6 +191,12 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
     } else {
       bubbleContent = (
         <div className="flex flex-col items-start gap-1">
+          {message.isForwarded && (
+            <div className="text-[10px] font-semibold text-slate-400 flex items-center gap-1 mb-1 pl-1 select-none">
+              <CornerUpRight size={11} strokeWidth={2.5} />
+              <span>Forwarded</span>
+            </div>
+          )}
           <FileCard file={message.file} isMe={isMe} onViewFile={onViewFile} />
           {parsedReactions.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1 pl-1">
@@ -217,6 +231,15 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
           ? 'bg-[#4f46e5] text-white rounded-2xl rounded-tr-sm self-end'
           : 'bg-[#f8fafc] border border-[#e2e8f0] text-[#0f172a] rounded-2xl rounded-tl-sm self-start'
       )}>
+        {message.isForwarded && (
+          <div className={clsx(
+            "text-[10px] font-semibold flex items-center gap-1 mb-1.5 select-none",
+            isMe ? "text-indigo-200/80" : "text-slate-400"
+          )}>
+            <CornerUpRight size={11} strokeWidth={2.5} />
+            <span>Forwarded</span>
+          </div>
+        )}
         <div className="pb-0.5">{renderMessageText(message.text)}</div>
         
         {parsedReactions.length > 0 && (
@@ -274,6 +297,12 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
             onClick={(e) => {
               e.stopPropagation();
               setShowMenu(false);
+              if (!showPopover) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const windowHeight = window.innerHeight;
+                const spaceBelow = windowHeight - rect.bottom;
+                setMenuDirection(spaceBelow < 220 ? 'up' : 'down');
+              }
               setShowPopover(v => !v);
             }}
             className={clsx(
@@ -293,6 +322,12 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
             onClick={(e) => {
               e.stopPropagation();
               setShowPopover(false);
+              if (!showMenu) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const windowHeight = window.innerHeight;
+                const spaceBelow = windowHeight - rect.bottom;
+                setMenuDirection(spaceBelow < 220 ? 'up' : 'down');
+              }
               setShowMenu(v => !v);
             }}
             className={clsx(
@@ -307,7 +342,10 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
 
           {/* Actions Dropdown Menu */}
           {showMenu && (
-            <div className="absolute top-full mt-1 right-0 z-50 bg-white border border-[#e2e8f0] rounded-xl shadow-lg py-1 w-[150px] animate-scale-in">
+            <div className={clsx(
+              "absolute z-50 bg-white border border-[#e2e8f0] rounded-xl shadow-lg py-1 w-[150px] animate-scale-in right-0",
+              menuDirection === 'up' ? "bottom-full mb-1" : "top-full mt-1"
+            )}>
               {canEdit && (
                 <button
                   onClick={() => {
@@ -336,8 +374,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
 
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(message.text || '');
-                  setChatAlert({ type: 'success', message: 'Message copied for forwarding' });
+                  setForwardingMessage(message);
                   setShowMenu(false);
                 }}
                 className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
@@ -389,7 +426,12 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
 
         {/* Smiley Popover React Emojis */}
         {showPopover && (
-          <div className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 z-50 bg-white border border-[#e2e8f0] rounded-xl shadow-lg p-1.5 flex flex-col items-center gap-1.5 animate-scale-in max-w-[280px] before:content-[''] before:absolute before:bottom-full before:left-1/2 before:-translate-x-1/2 before:border-4 before:border-transparent before:border-b-white">
+          <div className={clsx(
+            "absolute left-1/2 -translate-x-1/2 z-50 bg-white border border-[#e2e8f0] rounded-xl shadow-lg p-1.5 flex flex-col items-center gap-1.5 animate-scale-in max-w-[280px] before:content-[''] before:absolute before:left-1/2 before:-translate-x-1/2 before:border-4 before:border-transparent",
+            menuDirection === 'up'
+              ? "bottom-full mb-1.5 before:top-full before:border-t-white"
+              : "top-full mt-1.5 before:bottom-full before:border-b-white"
+          )}>
             <div className="flex items-center gap-1">
               <button
                 onClick={(e) => {
