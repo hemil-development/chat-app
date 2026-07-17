@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { CheckCheck } from 'lucide-react';
+import { Check, CheckCheck } from 'lucide-react';
 import clsx from 'clsx';
 import { Avatar } from './ui/Avatar';
 import { DateDivider } from './chat/DateDivider';
@@ -9,17 +9,17 @@ function getDateLabel(isoString) {
   if (!isoString) return 'Today';
   const date = new Date(isoString);
   const now = new Date();
-  
+
   if (date.toDateString() === now.toDateString()) {
     return 'Today';
   }
-  
+
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (date.toDateString() === yesterday.toDateString()) {
     return 'Yesterday';
   }
-  
+
   return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
@@ -80,49 +80,48 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
             {group.showDivider && <DateDivider label={group.dateLabel} />}
             <div className={clsx('flex gap-3 px-6 py-2 group transition-colors duration-150', isMe && 'flex-row-reverse')}>
 
-            {/* Avatar - Only for incoming messages */}
-            <div className={clsx('flex-shrink-0 w-8 self-start mt-0.5', isMe && 'hidden')}>
-              <Avatar
-                initials={sender.initials}
-                color={sender.color}
-                size="sm"
-                borderColor="#ffffff"
-              />
-            </div>
+              {/* Avatar - Only for incoming messages */}
+              <div className={clsx('flex-shrink-0 w-8 self-start mt-0.5', isMe && 'hidden')}>
+                <Avatar
+                  initials={sender.initials}
+                  color={sender.color}
+                  size="sm"
+                  borderColor="#ffffff"
+                />
+              </div>
 
-            {/* Messages */}
-            <div className={clsx('flex flex-col gap-1 w-full max-w-[70%]', isMe && 'items-end')}>
-              {/* Header */}
-              {!isMe && (
-                <div className="flex items-baseline gap-2 mb-0.5 ml-1">
-                  <span className="text-[13px] font-bold text-[#0f172a]">{sender.name}</span>
-                  <span className="text-[10px] text-[#94a3b8] font-medium tabular-nums">
-                    {group.items[0].timestamp}
-                  </span>
-                </div>
-              )}
+              {/* Messages */}
+              <div className={clsx('flex flex-col gap-1 w-full max-w-[70%]', isMe && 'items-end')}>
+                {/* Header */}
+                {!isMe && (
+                  <div className="flex items-baseline gap-2 mb-0.5 ml-1">
+                    <span className="text-[13px] font-bold text-[#0f172a]">{sender.name}</span>
+                  </div>
+                )}
 
-              {/* Bubbles */}
-              {group.items.map(msg => (
-                <MessageBubble key={msg.id} message={msg} isMe={isMe} />
-              ))}
-              
-              {/* Timestamp below the group - Only for outgoing messages */}
-              {isMe && (
-                <div className="flex items-center gap-1 mt-0.5 pr-1">
-                  <span className="text-[10px] text-[#94a3b8] font-medium tabular-nums">
-                    {group.items[group.items.length - 1].timestamp}
-                  </span>
-                  <CheckCheck
-                    size={12}
-                    className={clsx(
-                      isSeen(group.items[group.items.length - 1]) ? 'text-[#4f46e5]' : 'text-[#94a3b8]'
-                    )}
-                  />
-                </div>
-              )}
+                {/* Bubbles */}
+                {group.items.map(msg => {
+                  const seen = isSeen(msg);
+                  const recipientOnline = contact?.status === 'online';
+                  const tick = seen ? (
+                    <CheckCheck size={14} className="text-[#38bdf8]" />
+                  ) : recipientOnline ? (
+                    <CheckCheck size={13} className="text-indigo-200/80" />
+                  ) : (
+                    <Check size={13} className="text-indigo-200/80" />
+                  );
+
+                  return (
+                    <MessageBubble
+                      key={msg.id}
+                      message={msg}
+                      isMe={isMe}
+                      tick={tick}
+                    />
+                  );
+                })}
+              </div>
             </div>
-          </div>
           </div>
         );
       })}
