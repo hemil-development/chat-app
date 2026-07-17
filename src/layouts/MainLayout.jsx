@@ -9,6 +9,7 @@ import { MessageArea }  from '../components/MessageArea';
 import { MessageInput } from '../components/MessageInput';
 import { FilesPanel }   from '../components/FilesPanel';
 import { StarredPanel } from '../components/StarredPanel';
+import { SearchPanel }  from '../components/SearchPanel';
 import { EmptyState }       from '../components/chat/EmptyState';
 import { NotificationList } from '../components/chat/NotificationList';
 import { StarredSidebar }   from '../components/chat/StarredSidebar';
@@ -31,6 +32,7 @@ export function MainLayout() {
     currentUser, currentContact,
     activeRoomTypingUsers,
     chatAlert, setChatAlert,
+    isSearchOpen, setIsSearchOpen,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus
   } = useChat();
 
@@ -121,6 +123,8 @@ export function MainLayout() {
                   contacts={contacts}
                   typingUsers={activeRoomTypingUsers}
                   onViewFile={setViewingFile}
+                  isSearchOpen={isSearchOpen}
+                  setIsSearchOpen={setIsSearchOpen}
                 />
                 <MessageInput 
                   onSendMessage={handleSend} 
@@ -133,6 +137,7 @@ export function MainLayout() {
 
             {activeTab === 'files'   && <FilesPanel />}
             {activeTab === 'starred' && <StarredPanel />}
+            {activeTab === 'search'  && <SearchPanel />}
           </>
         ) : (
           <EmptyState contacts={contacts} />

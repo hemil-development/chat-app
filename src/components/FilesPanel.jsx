@@ -1,6 +1,5 @@
-import { FileText, Download, ExternalLink } from 'lucide-react';
-import { sharedFiles } from '../data/mockData';
-import clsx from 'clsx';
+import { FileText, Download, Eye } from 'lucide-react';
+import { useChat } from '../context/ChatContext';
 
 const EXT_STYLE = {
   doc:  { bg: '#eff6ff', icon: '#3b82f6', border: '#bfdbfe', chipBg: '#dbeafe', chipText: '#1d4ed8' },
@@ -10,7 +9,35 @@ const EXT_STYLE = {
   zip:  { bg: '#fffbeb', icon: '#f59e0b', border: '#fde68a', chipBg: '#fef3c7', chipText: '#b45309' },
 };
 
+const formatFileDate = (isoString) => {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const now = new Date();
+  
+  const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  
+  if (date.toDateString() === now.toDateString()) {
+    return `Today, ${timeStr}`;
+  }
+  
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) {
+    return `Yesterday, ${timeStr}`;
+  }
+  
+  const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return `${dateStr}, ${timeStr}`;
+};
+
 export function FilesPanel() {
+  const { allMessages, setViewingFile } = useChat();
+
+  const fileMessages = (allMessages || []).filter(m => m.type === 'file' && m.file);
+  
+  // Sort files by newest first
+  const sortedFiles = [...fileMessages].reverse();
+
   return (
     <div className="flex-1 overflow-y-auto bg-[#f8fafc] px-6 py-6">
 
@@ -18,18 +45,20 @@ export function FilesPanel() {
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-[15px] font-bold text-[#0f172a]">Shared Files</h3>
           <span className="text-[11px] font-semibold text-[#64748b] bg-white border border-[#e2e8f0] px-2.5 py-1 rounded-full shadow-sm">
-            {sharedFiles.length} files
+            {sortedFiles.length} files
           </span>
         </div>
 
         <div className="grid gap-3">
-          {sharedFiles.map(file => {
+          {sortedFiles.map(msg => {
+            const file = msg.file;
             const ext   = file.name.split('.').pop()?.toLowerCase() ?? 'doc';
             const style = EXT_STYLE[ext] ?? EXT_STYLE.doc;
 
             return (
               <div
-                key={file.id}
+                key={msg.id}
+                onClick={() => setViewingFile(file)}
                 className="flex items-center gap-4 p-4 bg-white border border-[#e2e8f0]
                            rounded-xl hover:border-[#cbd5e1] hover:shadow-sm transition-all duration-150
                            cursor-pointer group"
@@ -52,23 +81,49 @@ export function FilesPanel() {
                     </span>
                     <span className="text-[11px] font-medium text-[#64748b]">{file.size}</span>
                     <span className="text-[#cbd5e1] text-[10px]">·</span>
-                    <span className="text-[11px] font-medium text-[#64748b]">{file.date}</span>
+                    <span className="text-[11px] font-medium text-[#64748b]">
+                      {formatFileDate(msg.createdAt)}
+                    </span>
                   </div>
                 </div>
 
                 {/* Actions */}
                 <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                  {[Download, ExternalLink].map((Icon, i) => (
-                    <button key={i} className="w-9 h-9 flex items-center justify-center rounded-lg
-                                               text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#0f172a]
-                                               transition-all duration-100 border border-transparent hover:border-[#e2e8f0]">
-                      <Icon size={16} strokeWidth={2} />
-                    </button>
-                  ))}
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewingFile(file);
+                    }}
+                    className="w-9 h-9 flex items-center justify-center rounded-lg
+                               text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#0f172a]
+                               transition-all duration-100 border border-transparent hover:border-[#e2e8f0]"
+                  >
+                    <Eye size={16} strokeWidth={2} />
+                  </button>
+                  <a 
+                    href={file.url} 
+                    download={file.name}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-9 h-9 flex items-center justify-center rounded-lg
+                               text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#0f172a]
+                               transition-all duration-100 border border-transparent hover:border-[#e2e8f0]"
+                  >
+                    <Download size={16} strokeWidth={2} />
+                  </a>
                 </div>
               </div>
             );
           })}
+          
+          {sortedFiles.length === 0 && (
+            <div className="text-center py-10 bg-white border border-[#e2e8f0] border-dashed rounded-xl">
+              <FileText size={32} className="mx-auto text-[#cbd5e1] mb-3" />
+              <p className="text-[14px] font-semibold text-[#475569]">No shared files</p>
+              <p className="text-[12px] text-[#94a3b8] mt-1">Files you share in this conversation will appear here.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -19,6 +19,7 @@ export function ChatProvider({ children }) {
   const [viewingFile,   setViewingFile]   = useState(null);
   const [currentUser,   setCurrentUser]   = useState(null);
   const [chatAlert,     setChatAlert]     = useState(null);
+  const [isSearchOpen,  setIsSearchOpen]  = useState(false);
 
   const typingTimeoutsRef = useRef({});
   const activeChannelRef  = useRef(null);
@@ -954,6 +955,7 @@ export function ChatProvider({ children }) {
     currentUser, currentContact,
     activeRoomTypingUsers,
     chatAlert, setChatAlert,
+    isSearchOpen, setIsSearchOpen,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup
   };
 
