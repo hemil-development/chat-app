@@ -1,10 +1,64 @@
-import { Star, FileText, MessageSquare } from 'lucide-react';
-import { starredMessages } from '../data/mockData';
-import { currentUser, contacts } from '../data/mockData';
+import { useState, useEffect } from 'react';
+import { Star, FileText, MessageSquare, Loader2 } from 'lucide-react';
+import { useChat } from '../context/ChatContext';
+import { supabase } from '../lib/supabase';
 import { Avatar } from './ui/Avatar';
 import clsx from 'clsx';
 
 export function StarredPanel() {
+  const { currentUser, contacts, handleToggleStar } = useChat();
+  const [starredMessages, setStarredMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    async function fetchStarred() {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .contains('star_by_users', [{ user_id: currentUser.id }])
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
+
+        const formatted = (data || []).map(m => {
+          let fileMeta = null;
+          let text = m.message;
+          if (m.type === 'file') {
+            try { fileMeta = JSON.parse(m.message); text = ''; } catch(e) {}
+          }
+          return {
+            id: m.id,
+            senderId: m.created_by === currentUser.id ? 'me' : m.created_by,
+            text,
+            file: fileMeta,
+            timestamp: new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            type: m.type || 'text',
+            createdAt: m.created_at,
+          };
+        });
+        setStarredMessages(formatted);
+      } catch (err) {
+        console.error("Error fetching starred messages:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchStarred();
+  }, [currentUser]);
+
+  const handleUnstar = async (e, msgId) => {
+    e.stopPropagation();
+    // Optimistically remove it from the list
+    setStarredMessages(prev => prev.filter(m => m.id !== msgId));
+    // Trigger the context toggle
+    await handleToggleStar(msgId);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto bg-[#f8fafc] px-6 py-6">
       <div className="max-w-3xl mx-auto">
@@ -16,7 +70,11 @@ export function StarredPanel() {
           </span>
         </div>
 
-        {starredMessages.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <Loader2 className="animate-spin text-[#64748b]" size={24} />
+          </div>
+        ) : starredMessages.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-center">
             <div className="w-14 h-14 rounded-2xl bg-[#fef3c7] border border-[#fde68a] flex items-center justify-center mb-4">
               <Star size={26} className="text-[#f59e0b]" strokeWidth={1.8} />
@@ -54,9 +112,11 @@ export function StarredPanel() {
                     </div>
                   </div>
 
-                  <button className="opacity-0 group-hover:opacity-100 transition-opacity duration-150
-                                     w-8 h-8 flex items-center justify-center rounded-lg
-                                     hover:bg-[#fef3c7] text-[#f59e0b]">
+                  <button 
+                    onClick={(e) => handleUnstar(e, msg.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity duration-150
+                               w-8 h-8 flex items-center justify-center rounded-lg
+                               hover:bg-[#fef3c7] text-[#f59e0b]">
                     <Star size={16} strokeWidth={2} fill="currentColor" />
                   </button>
                 </div>
