@@ -47,12 +47,19 @@ export function FileCard({ file, isMe }) {
         </div>
 
         <div className="flex flex-col gap-1">
-          <button className={clsx(
-            'w-7 h-7 flex items-center justify-center rounded-md transition-all',
-            isMe ? 'text-white hover:bg-white/20' : 'text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#0f172a]'
-          )}>
+          <a
+            href={file.url || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            download={file.name}
+            className={clsx(
+              'w-7 h-7 flex items-center justify-center rounded-md transition-all',
+              isMe ? 'text-white hover:bg-white/20' : 'text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#0f172a]',
+              !file.url && 'opacity-50 cursor-not-allowed'
+            )}
+          >
             <Download size={14} strokeWidth={2} />
-          </button>
+          </a>
         </div>
       </div>
     </div>

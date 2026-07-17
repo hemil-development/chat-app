@@ -21,10 +21,11 @@ const getMentionQuery = (val, cursorIdx) => {
   return { query, index: lastAtIdx };
 };
 
-export function MessageInput({ onSendMessage, onTyping, contacts = [] }) {
+export function MessageInput({ onSendMessage, onTyping, onFileUpload, contacts = [] }) {
   const [text, setText]           = useState('');
   const [emojiOpen, setEmojiOpen] = useState(false);
   const inputRef                  = useRef(null);
+  const fileInputRef              = useRef(null);
   const typingTimeoutRef          = useRef(null);
   const [isTyping, setIsTyping]   = useState(false);
 
@@ -152,6 +153,15 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [] }) {
     inputRef.current?.focus();
   };
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file && onFileUpload) {
+      onFileUpload(file);
+    }
+    // Clear input so same file can be selected again
+    e.target.value = '';
+  };
+
   return (
     <div className="px-6 pb-6 pt-2 bg-white flex-shrink-0">
       <div className="msg-box relative">
@@ -202,7 +212,13 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [] }) {
             <IconButton icon={Bold}       title="Bold"   />
             <IconButton icon={Italic}     title="Italic" />
             <div className="w-px h-4 bg-[#e2e8f0] mx-1" />
-            <IconButton icon={Paperclip}  title="Attach file" />
+            <input 
+              type="file" 
+              className="hidden" 
+              ref={fileInputRef} 
+              onChange={handleFileSelect} 
+            />
+            <IconButton icon={Paperclip}  title="Attach file" onClick={() => fileInputRef.current?.click()} />
             <IconButton icon={AtSign}     title="Mention"  onClick={triggerAtSymbol} />
             <div className="relative">
               <IconButton

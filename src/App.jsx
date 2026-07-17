@@ -42,8 +42,16 @@ function formatMessageTime(isoString) {
   if (date.toDateString() === yesterday.toDateString()) {
     return 'Yesterday';
   }
-  
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatBytes(bytes, decimals = 1) {
+  if (!+bytes) return '0 B';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
 
 const sortContacts = (list) => {
@@ -291,15 +299,23 @@ export default function App() {
       }
 
       if (isMounted) {
-        const formatted = (data || []).map(m => ({
-          id: m.id,
-          senderId: m.created_by === companyUserId ? 'me' : m.created_by,
-          text: m.message,
-          timestamp: new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-          type: m.type || 'text',
-          createdAt: m.created_at,
-          readByUsers: m.read_by_users,
-        }));
+        const formatted = (data || []).map(m => {
+          let fileMeta = null;
+          let text = m.message;
+          if (m.type === 'file') {
+            try { fileMeta = JSON.parse(m.message); text = ''; } catch(e) {}
+          }
+          return {
+            id: m.id,
+            senderId: m.created_by === companyUserId ? 'me' : m.created_by,
+            text,
+            file: fileMeta,
+            timestamp: new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            type: m.type || 'text',
+            createdAt: m.created_at,
+            readByUsers: m.read_by_users,
+          };
+        });
         setAllMessages(formatted);
       }
 
@@ -329,12 +345,18 @@ export default function App() {
             if (isMounted) {
               setAllMessages(prev => {
                 if (prev.some(x => x.id === m.id)) return prev;
+                let fileMeta = null;
+                let text = m.message;
+                if (m.type === 'file') {
+                  try { fileMeta = JSON.parse(m.message); text = ''; } catch(e) {}
+                }
                 return [
                   ...prev,
                   {
                     id: m.id,
                     senderId: m.created_by === companyUserId ? 'me' : m.created_by,
-                    text: m.message,
+                    text,
+                    file: fileMeta,
                     timestamp: new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
                     type: m.type || 'text',
                     createdAt: m.created_at,
@@ -431,13 +453,13 @@ export default function App() {
             if (!exists) return prev;
             const updated = prev.map(c => {
               if (c.roomId === m.room_id || (!c.roomId && c.id === m.created_by)) {
-                let text = m.message;
+                let text = m.type === 'file' ? 'sent a file' : m.message;
                 if (c.isChannel) {
                   const sender = prev.find(x => x.id === m.created_by) || (m.created_by === companyUserId ? currentUser : null);
                   const senderName = sender ? (m.created_by === companyUserId ? 'You' : sender.name.split(' ')[0]) : 'Someone';
-                  text = `${senderName}: ${m.message}`;
+                  text = `${senderName}: ${text}`;
                 } else if (m.created_by === companyUserId) {
-                  text = `You: ${m.message}`;
+                  text = `You: ${text}`;
                 }
                 
                 const isIncomingFromOtherRoom = m.created_by !== companyUserId && 
@@ -553,8 +575,8 @@ export default function App() {
               color: getUserColor(newNotif.sender_id),
               initial: `${senderData?.users?.first_name?.[0] || '?'}${senderData?.users?.last_name?.[0] || ''}`.toUpperCase(),
               emoji: newNotif.emoji || '🔔',
-              isRead: newNotif.is_read,
-              linkId: newNotif.link_id,
+              isRead: n.is_read,
+              linkId: n.link_id,
             };
 
             setNotifications(prev => [formatted, ...prev]);
@@ -712,6 +734,119 @@ export default function App() {
     }
   };
 
+  const handleFileUpload = async (file) => {
+    if (!activeContact) return;
+
+    try {
+      let roomId = activeContact.roomId;
+      
+      // 1. Create room if it doesn't exist
+      if (!roomId) {
+        const { data: existing } = await supabase
+          .from('chat_rooms')
+          .select('id')
+          .eq('type', 'single')
+          .contains('participants', [companyUserId, activeContact.id]);
+
+        if (existing && existing.length > 0) {
+          roomId = existing[0].id;
+        } else {
+          const roomName = `${currentUser.name} & ${activeContact.name}`;
+          const { data: newRoom, error: roomErr } = await supabase
+            .from('chat_rooms')
+            .insert({
+              type: 'single',
+              participants: [companyUserId, activeContact.id],
+              created_by: companyUserId,
+              name: roomName,
+              description: 'Direct message room',
+              typing_participants: []
+            })
+            .select()
+            .single();
+
+          if (roomErr) throw roomErr;
+          roomId = newRoom.id;
+          
+          setContacts(prev => prev.map(c => c.id === activeContact.id ? { ...c, roomId } : c));
+          setActiveContact(prev => ({ ...prev, roomId }));
+        }
+      }
+
+      // 2. Upload file to Supabase Storage bucket 'chat' in 'chat_documents' folder
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${companyUserId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `chat_documents/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('chat')
+        .upload(filePath, file);
+        
+      if (uploadError) throw uploadError;
+      
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('chat')
+        .getPublicUrl(filePath);
+
+      // 3. Insert message
+      const fileMeta = {
+        name: file.name,
+        size: formatBytes(file.size),
+        url: publicUrl,
+        type: file.type
+      };
+      
+      const { data: newMsg, error: msgErr } = await supabase
+        .from('chat_messages')
+        .insert({
+          room_id: roomId,
+          created_by: companyUserId,
+          message: JSON.stringify(fileMeta),
+          type: 'file'
+        })
+        .select()
+        .single();
+
+      if (msgErr) throw msgErr;
+
+      await supabase.from('chat_rooms').update({ last_message_id: newMsg.id }).eq('id', roomId);
+
+      // 4. Update UI locally for faster UX
+      setAllMessages(prev => {
+        if (prev.some(x => x.id === newMsg.id)) return prev;
+        return [
+          ...prev,
+          {
+            id: newMsg.id,
+            senderId: 'me',
+            text: '',
+            file: fileMeta,
+            timestamp: new Date(newMsg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            type: 'file',
+            createdAt: newMsg.created_at,
+          }
+        ];
+      });
+
+      setContacts(prev => prev.map(c => {
+        if (c.id === activeContact.id || c.roomId === roomId) {
+          return {
+            ...c,
+            roomId,
+            lastMessage: `You: sent a file`,
+            timestamp: formatMessageTime(newMsg.created_at),
+          };
+        }
+        return c;
+      }));
+
+    } catch (err) {
+      console.error("Error in handleFileUpload:", err);
+      alert("Failed to upload file. Please try again.");
+    }
+  };
+
   const handleSelect = (contact) => {
     setActiveContact(contact);
     setActiveTab('chat');
@@ -839,7 +974,12 @@ export default function App() {
                   contacts={contacts}
                   typingUsers={activeRoomTypingUsers}
                 />
-                <MessageInput onSendMessage={handleSend} onTyping={sendTypingStatus} contacts={contacts} />
+                <MessageInput 
+                  onSendMessage={handleSend} 
+                  onFileUpload={handleFileUpload}
+                  onTyping={sendTypingStatus} 
+                  contacts={contacts} 
+                />
               </>
             )}
 
