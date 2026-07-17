@@ -18,6 +18,7 @@ export function ChatProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
   const [viewingFile,   setViewingFile]   = useState(null);
   const [currentUser,   setCurrentUser]   = useState(null);
+  const [chatAlert,     setChatAlert]     = useState(null);
 
   const typingTimeoutsRef = useRef({});
   const activeChannelRef  = useRef(null);
@@ -34,6 +35,14 @@ export function ChatProvider({ children }) {
       Notification.requestPermission();
     }
   }, []);
+
+  // Auto-dismiss chat alert after 5 seconds
+  useEffect(() => {
+    if (chatAlert) {
+      const timer = setTimeout(() => setChatAlert(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [chatAlert]);
 
   // Load initial data
   useEffect(() => {
@@ -286,7 +295,7 @@ export function ChatProvider({ children }) {
     if (contact.roomId) markMessagesAsRead(contact.roomId);
   }, [markMessagesAsRead, setActiveNav]);
 
-  const handleSend = async (text) => {
+  const handleSend = async (text, files) => {
     if (!currentContact) return;
 
     try {
@@ -322,43 +331,94 @@ export function ChatProvider({ children }) {
         setActiveContact(prev => prev ? { ...prev, roomId } : null);
       }
 
-      const { data: newMsg, error: msgErr } = await supabase
-        .from('chat_messages')
-        .insert({ room_id: roomId, created_by: companyUserId, message: text, type: 'text' })
-        .select()
-        .single();
+      let lastUploadedMsg = null;
 
-      if (msgErr) return console.error("Failed to send message:", msgErr);
+      if (files && files.length > 0) {
+        for (const file of files) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${companyUserId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+          const filePath = `chat_documents/${fileName}`;
+          
+          const { error: uploadError } = await supabase.storage.from('chat').upload(filePath, file);
+          if (uploadError) throw uploadError;
+          
+          const { data: { publicUrl } } = supabase.storage.from('chat').getPublicUrl(filePath, { download: file.name });
+          const fileMeta = { name: file.name, size: formatBytes(file.size), url: publicUrl, type: file.type };
 
-      await supabase.from('chat_rooms').update({ last_message_id: newMsg.id }).eq('id', roomId);
+          const { data: insertedMsg, error: msgErr } = await supabase
+            .from('chat_messages')
+            .insert({ room_id: roomId, created_by: companyUserId, message: JSON.stringify(fileMeta), type: 'file' })
+            .select()
+            .single();
 
-      setAllMessages(prev => {
-        if (prev.some(x => x.id === newMsg.id)) return prev;
-        return [...prev, {
-          id: newMsg.id,
-          senderId: 'me',
-          text: newMsg.message,
-          timestamp: new Date(newMsg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-          type: 'text',
-          createdAt: newMsg.created_at,
-        }];
-      });
+          if (msgErr) throw msgErr;
+          lastUploadedMsg = insertedMsg;
 
-      setContacts(prev => {
-        const updated = prev.map(c => {
-          if (c.id === currentContact.id || c.roomId === roomId) {
-            return {
-              ...c,
-              roomId,
-              lastMessage: `You: ${text}`,
-              timestamp: formatMessageTime(newMsg.created_at),
-              rawTimestamp: newMsg.created_at,
-            };
-          }
-          return c;
+          setAllMessages(prev => {
+            if (prev.some(x => x.id === insertedMsg.id)) return prev;
+            return [...prev, {
+              id: insertedMsg.id,
+              senderId: 'me',
+              text: '',
+              file: fileMeta,
+              timestamp: new Date(insertedMsg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+              type: 'file',
+              createdAt: insertedMsg.created_at,
+            }];
+          });
+        }
+      }
+
+      let newMsgText = null;
+      if (text) {
+        const { data: insertedMsg, error: msgErr } = await supabase
+          .from('chat_messages')
+          .insert({ room_id: roomId, created_by: companyUserId, message: text, type: 'text' })
+          .select()
+          .single();
+
+        if (msgErr) return console.error("Failed to send message:", msgErr);
+        newMsgText = insertedMsg;
+
+        setAllMessages(prev => {
+          if (prev.some(x => x.id === insertedMsg.id)) return prev;
+          return [...prev, {
+            id: insertedMsg.id,
+            senderId: 'me',
+            text: insertedMsg.message,
+            timestamp: new Date(insertedMsg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            type: 'text',
+            createdAt: insertedMsg.created_at,
+          }];
         });
-        return sortContacts(updated);
-      });
+      }
+
+      const latestMsg = newMsgText || lastUploadedMsg;
+      if (latestMsg) {
+        await supabase.from('chat_rooms').update({ last_message_id: latestMsg.id }).eq('id', roomId);
+
+        setContacts(prev => {
+          const updated = prev.map(c => {
+            if (c.id === currentContact.id || c.roomId === roomId) {
+              let preview = '';
+              if (newMsgText) {
+                preview = `You: ${text}`;
+              } else if (lastUploadedMsg) {
+                preview = `You: sent a file`;
+              }
+              return {
+                ...c,
+                roomId,
+                lastMessage: preview,
+                timestamp: formatMessageTime(latestMsg.created_at),
+                rawTimestamp: latestMsg.created_at,
+              };
+            }
+            return c;
+          });
+          return sortContacts(updated);
+        });
+      }
     } catch (err) {
       console.error("Error in handleSend:", err);
     }
@@ -893,6 +953,7 @@ export function ChatProvider({ children }) {
     viewingFile, setViewingFile,
     currentUser, currentContact,
     activeRoomTypingUsers,
+    chatAlert, setChatAlert,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup
   };
 
