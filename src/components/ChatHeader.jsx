@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Star, FolderOpen, MessageSquare } from 'lucide-react';
 import clsx from 'clsx';
 import { Avatar } from './ui/Avatar';
+import { ContactDetailsDrawer } from './chat/ContactDetailsDrawer';
 
 const TABS = [
   { id: 'chat',    icon: MessageSquare, label: 'Chat'    },
@@ -12,12 +14,17 @@ const STATUS_LABEL = { online: 'Active now', busy: 'Do not disturb', away: 'Away
 const STATUS_COLOR = { online: 'text-[#2eb67d]', busy: 'text-[#e01e5a]', away: 'text-[#ecb22e]', offline: 'text-[#94a3b8]' };
 
 export function ChatHeader({ contact, activeTab, onTabChange }) {
+  const [showDetails, setShowDetails] = useState(false);
+
   if (!contact) return null;
 
   return (
     <div className="flex flex-col border-b border-[#e2e8f0] bg-white flex-shrink-0">
       {/* Top Info */}
-      <div className="flex items-center gap-3 px-6 pt-4 pb-2">
+      <div 
+        className="flex items-center gap-3 px-6 pt-4 pb-2 cursor-pointer hover:bg-[#f8fafc] transition-colors rounded-t-xl"
+        onClick={() => setShowDetails(true)}
+      >
         <Avatar
           initials={contact.initials}
           color={contact.color}
@@ -63,6 +70,12 @@ export function ChatHeader({ contact, activeTab, onTabChange }) {
           </button>
         ))}
       </div>
+
+      <ContactDetailsDrawer 
+        isOpen={showDetails}
+        onClose={() => setShowDetails(false)}
+        contact={contact}
+      />
     </div>
   );
 }

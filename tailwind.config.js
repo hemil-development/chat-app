@@ -39,6 +39,7 @@ export default {
         slideUp:   { from: { opacity: '0', transform: 'translateY(6px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
         fadeIn:    { from: { opacity: '0' }, to: { opacity: '1' } },
         scaleIn:   { from: { opacity: '0', transform: 'scale(0.96)' }, to: { opacity: '1', transform: 'scale(1)' } },
+        slideInRight: { from: { transform: 'translateX(100%)' }, to: { transform: 'translateX(0)' } },
         bounce3:   {
           '0%,80%,100%': { transform: 'translateY(0)' },
           '40%':          { transform: 'translateY(-5px)' },
@@ -48,6 +49,7 @@ export default {
         'slide-up': 'slideUp 0.18s ease-out',
         'fade-in':  'fadeIn 0.15s ease-out',
         'scale-in': 'scaleIn 0.15s ease-out',
+        'slide-in-right': 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
         'bounce-1': 'bounce3 1.2s 0.0s ease-in-out infinite',
         'bounce-2': 'bounce3 1.2s 0.2s ease-in-out infinite',
         'bounce-3': 'bounce3 1.2s 0.4s ease-in-out infinite',

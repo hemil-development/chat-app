@@ -602,7 +602,7 @@ export function ChatProvider({ children }) {
         (payload) => {
           const m = payload.new;
           setContacts(prev => {
-            const exists = prev.some(c => c.roomId === m.room_id || (!c.roomId && c.id === m.created_by));
+            const exists = prev.some(c => c.roomId === m.room_id);
             if (!exists) {
               if (m.room_id) {
                 supabase
@@ -612,6 +612,9 @@ export function ChatProvider({ children }) {
                   .single()
                   .then(async ({ data: room }) => {
                     if (!room) return;
+                    // Fix: Ensure we are actually a participant in this room before adding it!
+                    if (room.participants && !room.participants.includes(companyUserId)) return;
+                    
                     let newContact = null;
                     
                     if (room.type === 'group') {
@@ -663,6 +666,14 @@ export function ChatProvider({ children }) {
                     if (newContact) {
                       setContacts(latest => {
                         if (latest.some(x => x.roomId === room.id)) return latest;
+                        
+                        const existingIdx = latest.findIndex(x => !x.isChannel && x.id === newContact.id);
+                        if (existingIdx !== -1) {
+                          const updated = [...latest];
+                          updated[existingIdx] = { ...updated[existingIdx], ...newContact };
+                          return sortContacts(updated);
+                        }
+                        
                         return sortContacts([newContact, ...latest]);
                       });
                     }
@@ -672,7 +683,7 @@ export function ChatProvider({ children }) {
             }
 
             const updated = prev.map(c => {
-              if (c.roomId === m.room_id || (!c.roomId && c.id === m.created_by)) {
+              if (c.roomId === m.room_id) {
                 let text = m.type === 'file' ? 'sent a file' : m.message;
                 if (c.isChannel) {
                   const sender = prev.find(x => x.id === m.created_by) || (m.created_by === companyUserId ? currentUser : null);
@@ -702,37 +713,41 @@ export function ChatProvider({ children }) {
 
           // Trigger native Chrome push notification for incoming messages
           if (m.created_by !== companyUserId) {
-            if ('Notification' in window && Notification.permission === 'granted') {
-              if (document.visibilityState === 'hidden' || currentContact?.roomId !== m.room_id) {
-                supabase
-                  .from('company_users')
-                  .select('*, users(*)')
-                  .eq('id', m.created_by)
-                  .single()
-                  .then(({ data: senderData }) => {
-                    const senderName = senderData 
-                      ? `${senderData.users?.first_name || ''} ${senderData.users?.last_name || ''}`.trim()
-                      : 'Someone';
-                      
-                    const bodyText = m.type === 'file' ? '📁 Sent a file' : m.message;
-                    const desktopNotif = new Notification(senderName, {
-                      body: bodyText,
-                      icon: '/favicon.ico'
-                    });
+            supabase.from('chat_rooms').select('participants').eq('id', m.room_id).single().then(({ data: roomData }) => {
+              if (roomData && roomData.participants && roomData.participants.includes(companyUserId)) {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  if (document.visibilityState === 'hidden' || currentContact?.roomId !== m.room_id) {
+                    supabase
+                      .from('company_users')
+                      .select('*, users(*)')
+                      .eq('id', m.created_by)
+                      .single()
+                      .then(({ data: senderData }) => {
+                        const senderName = senderData 
+                          ? `${senderData.users?.first_name || ''} ${senderData.users?.last_name || ''}`.trim()
+                          : 'Someone';
+                          
+                        const bodyText = m.type === 'file' ? '📁 Sent a file' : m.message;
+                        const desktopNotif = new Notification(senderName, {
+                          body: bodyText,
+                          icon: '/favicon.ico'
+                        });
 
-                    desktopNotif.onclick = () => {
-                      window.focus();
-                      setContacts(latestContacts => {
-                        const target = latestContacts.find(c => c.roomId === m.room_id || c.id === m.created_by);
-                        if (target) {
-                          setTimeout(() => handleSelect(target), 0);
-                        }
-                        return latestContacts;
+                        desktopNotif.onclick = () => {
+                          window.focus();
+                          setContacts(latestContacts => {
+                            const target = latestContacts.find(c => c.roomId === m.room_id || c.id === m.created_by);
+                            if (target) {
+                              setTimeout(() => handleSelect(target), 0);
+                            }
+                            return latestContacts;
+                          });
+                        };
                       });
-                    };
-                  });
+                  }
+                }
               }
-            }
+            });
           }
         }
       )
@@ -845,6 +860,28 @@ export function ChatProvider({ children }) {
     return () => supabase.removeChannel(channel);
   }, [companyUserId, setActiveNav]);
 
+  const handleCreateGroup = async (name, participantIds) => {
+    try {
+      const { data: newRoom, error } = await supabase
+        .from('chat_rooms')
+        .insert({
+          type: 'group',
+          name,
+          participants: [companyUserId, ...participantIds],
+          created_by: companyUserId,
+          typing_participants: []
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return newRoom;
+    } catch (err) {
+      console.error("Error creating group:", err);
+      throw err;
+    }
+  };
+
   const value = {
     activeNav, setActiveNav,
     contacts, setContacts,
@@ -856,7 +893,7 @@ export function ChatProvider({ children }) {
     viewingFile, setViewingFile,
     currentUser, currentContact,
     activeRoomTypingUsers,
-    handleSend, handleFileUpload, handleSelect, sendTypingStatus
+    handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup
   };
 
   return (

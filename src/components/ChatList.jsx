@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Search, Edit } from 'lucide-react';
 import clsx from 'clsx';
 import { ConvItem } from './chat/ConvItem';
+import { CreateGroupModal } from './chat/CreateGroupModal';
+import { useChat } from '../context/ChatContext';
 
 const TABS = [
   { id: 'all',      label: 'All'      },
@@ -10,8 +12,10 @@ const TABS = [
 ];
 
 export function ChatList({ contacts = [], activeContactId, onSelectContact }) {
+  const { handleCreateGroup } = useChat();
   const [activeTab, setActiveTab]     = useState('all');
   const [query, setQuery]             = useState('');
+  const [showModal, setShowModal]     = useState(false);
 
   const filtered = contacts.filter(c => {
     const hit = c.name.toLowerCase().includes(query.toLowerCase());
@@ -31,7 +35,10 @@ export function ChatList({ contacts = [], activeContactId, onSelectContact }) {
           <span className="text-[#0f172a] font-bold text-[15px]">
             Messages
           </span>
-          <button className="flex items-center justify-center w-7 h-7 rounded-full text-[#64748b] hover:text-[#0f172a] hover:bg-[#e2e8f0] transition-colors">
+          <button 
+            onClick={() => setShowModal(true)}
+            className="flex items-center justify-center w-7 h-7 rounded-full text-[#64748b] hover:text-[#0f172a] hover:bg-[#e2e8f0] transition-colors"
+          >
             <Edit size={14} strokeWidth={2.5} />
           </button>
         </div>
@@ -87,6 +94,13 @@ export function ChatList({ contacts = [], activeContactId, onSelectContact }) {
           />
         ))}
       </div>
+
+      <CreateGroupModal 
+        isOpen={showModal} 
+        onClose={() => setShowModal(false)}
+        contacts={contacts}
+        onCreate={handleCreateGroup}
+      />
     </div>
   );
 }
