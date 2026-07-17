@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Paperclip, Smile, Send, AtSign, Mic, Bold, Italic, X } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Paperclip, Smile, Send, AtSign, Bold, Italic, X } from 'lucide-react';
 import { IconButton } from './ui/IconButton';
 import { Avatar } from './ui/Avatar';
 import clsx from 'clsx';
@@ -57,7 +57,30 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
   const [isEmpty, setIsEmpty]     = useState(true);
   const [pendingFiles, setPendingFiles] = useState([]);
   
-  const { setChatAlert } = useChat();
+  const { setChatAlert, editingMessage, setEditingMessage, handleEditMessage } = useChat();
+
+  // Prefill contentEditable editor when editing a message
+  useEffect(() => {
+    if (editingMessage) {
+      if (editorRef.current) {
+        editorRef.current.innerText = editingMessage.text;
+        setIsEmpty(false);
+        // Position cursor at the end
+        editorRef.current.focus();
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(editorRef.current);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    } else {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = '';
+        setIsEmpty(true);
+      }
+    }
+  }, [editingMessage]);
 
   const [isBoldActive, setIsBoldActive]     = useState(false);
   const [isItalicActive, setIsItalicActive] = useState(false);
@@ -117,10 +140,16 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
     
     if (!markdown && pendingFiles.length === 0) return;
 
-    onSendMessage(markdown, pendingFiles);
+    if (editingMessage) {
+      handleEditMessage(editingMessage.id, markdown);
+      setEditingMessage(null);
+    } else {
+      onSendMessage(markdown, pendingFiles);
+      setPendingFiles([]);
+    }
+
     editor.innerHTML = '';
     setIsEmpty(true);
-    setPendingFiles([]);
     setEmojiOpen(false);
     setMentionState(null);
     setIsBoldActive(false);
@@ -372,6 +401,21 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
           </div>
         )}
 
+        {/* Editing Banner */}
+        {editingMessage && (
+          <div className="flex items-center justify-between bg-slate-100/80 px-4 py-1.5 text-[11px] text-[#475569] font-semibold border-b border-[#e2e8f0]">
+            <span>Editing message...</span>
+            <button 
+              onClick={() => {
+                setEditingMessage(null);
+              }}
+              className="text-[#64748b] hover:text-[#ef4444] text-[10px] font-bold"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
         {/* contentEditable Div */}
         <div className="px-4 pt-3 pb-2">
           <div
@@ -427,18 +471,18 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
 
           {/* Send / Mic */}
           <div className="flex items-center gap-2 pr-1">
-            {!isSendDisabled ? (
-              <button
-                onClick={send}
-                className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#4f46e5] hover:bg-[#4338ca] text-white shadow-sm transition-all"
-              >
-                <Send size={15} strokeWidth={2.5} />
-              </button>
-            ) : (
-              <button className="flex items-center justify-center w-8 h-8 rounded-lg text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#0f172a] transition-all">
-                <Mic size={16} strokeWidth={2} />
-              </button>
-            )}
+            <button
+              onClick={send}
+              disabled={isSendDisabled}
+              className={clsx(
+                "flex items-center justify-center w-8 h-8 rounded-lg shadow-sm transition-all",
+                isSendDisabled 
+                  ? "bg-[#f1f5f9] text-[#cbd5e1] cursor-not-allowed" 
+                  : "bg-[#4f46e5] hover:bg-[#4338ca] text-white hover:scale-105"
+              )}
+            >
+              <Send size={15} strokeWidth={2.5} />
+            </button>
           </div>
         </div>
       </div>

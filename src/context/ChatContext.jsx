@@ -20,6 +20,8 @@ export function ChatProvider({ children }) {
   const [currentUser,   setCurrentUser]   = useState(null);
   const [chatAlert,     setChatAlert]     = useState(null);
   const [isSearchOpen,  setIsSearchOpen]  = useState(false);
+  const [editingMessage, setEditingMessage] = useState(null);
+  const [quoteMessage, setQuoteMessage] = useState(null);
 
   const typingTimeoutsRef = useRef({});
   const activeChannelRef  = useRef(null);
@@ -123,14 +125,41 @@ export function ChatProvider({ children }) {
         };
 
         // Helper to format last message string
-        const formatLastMsg = (msg) => {
+        const formatLastMsg = (msg, isGroup = false) => {
           if (!msg) return '';
-          if (msg.created_by === companyUserId) {
-            return `You: ${msg.message || ''}`;
+          const isYou = msg.created_by === companyUserId;
+          
+          let prefix = '';
+          if (isGroup) {
+            if (isYou) {
+              prefix = 'You: ';
+            } else {
+              const sender = (cUsers || []).find(cu => cu.id === msg.created_by);
+              const senderName = sender?.users?.first_name || 'Someone';
+              prefix = `${senderName}: `;
+            }
+          } else {
+            if (isYou) {
+              prefix = 'You: ';
+            }
           }
-          const sender = (cUsers || []).find(cu => cu.id === msg.created_by);
-          const senderName = sender?.users?.first_name || 'Someone';
-          return `${senderName}: ${msg.message || ''}`;
+
+          if (msg.type === 'file') {
+            try {
+              const fileMeta = typeof msg.message === 'string' ? JSON.parse(msg.message) : msg.message;
+              const isImg = fileMeta?.type?.startsWith('image/');
+              return `${prefix}sent a ${isImg ? 'image' : 'file'}`;
+            } catch (e) {
+              return `${prefix}sent a file`;
+            }
+          }
+          
+          // Strip markdown characters before returning
+          const cleanText = (msg.message || '')
+            .replace(/\*([^*]+)\*/g, '$1')
+            .replace(/_([^_]+)_/g, '$1');
+          
+          return `${prefix}${cleanText}`;
         };
 
         // 5. Build group chats list
@@ -146,7 +175,7 @@ export function ChatProvider({ children }) {
               color: getUserColor(r.id),
               status: null,
               role: 'Channel',
-              lastMessage: lastMsg ? formatLastMsg(lastMsg) : 'No messages yet',
+              lastMessage: lastMsg ? formatLastMsg(lastMsg, true) : 'No messages yet',
               timestamp: lastMsg ? formatMessageTime(lastMsg.created_at) : '',
               rawTimestamp: lastMsg ? lastMsg.created_at : '',
               unread: getUnreadCountForRoom(r.id),
@@ -174,7 +203,7 @@ export function ChatProvider({ children }) {
             status: cu.is_active ? 'online' : 'offline',
             role: cu.department || cu.designation || 'Colleague',
             lastSeen: cu.is_active ? 'Online' : 'Offline',
-            lastMessage: lastMsg ? (lastMsg.created_by === companyUserId ? `You: ${lastMsg.message}` : lastMsg.message) : 'Click to start chatting',
+            lastMessage: lastMsg ? formatLastMsg(lastMsg, false) : 'Click to start chatting',
             timestamp: lastMsg ? formatMessageTime(lastMsg.created_at) : '',
             rawTimestamp: lastMsg ? lastMsg.created_at : '',
             unread: getUnreadCountForRoom(matchingRoom ? matchingRoom.id : null),
@@ -403,9 +432,13 @@ export function ChatProvider({ children }) {
             if (c.id === currentContact.id || c.roomId === roomId) {
               let preview = '';
               if (newMsgText) {
-                preview = `You: ${text}`;
+                const cleanText = text
+                  .replace(/\*([^*]+)\*/g, '$1')
+                  .replace(/_([^_]+)_/g, '$1');
+                preview = `You: ${cleanText}`;
               } else if (lastUploadedMsg) {
-                preview = `You: sent a file`;
+                const isImg = fileMeta?.type?.startsWith('image/');
+                preview = `You: sent a ${isImg ? 'image' : 'file'}`;
               }
               return {
                 ...c,
@@ -550,6 +583,13 @@ export function ChatProvider({ children }) {
             type: m.type || 'text',
             createdAt: m.created_at,
             readByUsers: m.read_by_users,
+            reactions: m.reaction_by_users || [],
+            isEdited: m.is_edited,
+            isDeleted: m.is_deleted,
+            isStarred: (m.star_by_users || []).some(s => {
+              const parsed = typeof s === 'string' ? JSON.parse(s) : s;
+              return parsed?.user_id === companyUserId;
+            }),
           };
         });
         setAllMessages(formatted);
@@ -590,6 +630,13 @@ export function ChatProvider({ children }) {
                     type: m.type || 'text',
                     createdAt: m.created_at,
                     readByUsers: m.read_by_users,
+                    reactions: m.reaction_by_users || [],
+                    isEdited: m.is_edited,
+                    isDeleted: m.is_deleted,
+                    isStarred: (m.star_by_users || []).some(s => {
+                      const parsed = typeof s === 'string' ? JSON.parse(s) : s;
+                      return parsed?.user_id === companyUserId;
+                    }),
                   }
                 ];
               });
@@ -607,7 +654,26 @@ export function ChatProvider({ children }) {
             const m = payload.new;
             if (isMounted) {
               setAllMessages(prev => prev.map(msg => {
-                if (msg.id === m.id) return { ...msg, readByUsers: m.read_by_users };
+                if (msg.id === m.id) {
+                  let fileMeta = null;
+                  let text = m.message;
+                  if (m.type === 'file') {
+                    try { fileMeta = JSON.parse(m.message); text = ''; } catch(e) {}
+                  }
+                  return { 
+                    ...msg, 
+                    text,
+                    file: fileMeta,
+                    readByUsers: m.read_by_users, 
+                    reactions: m.reaction_by_users || [],
+                    isEdited: m.is_edited,
+                    isDeleted: m.is_deleted,
+                    isStarred: (m.star_by_users || []).some(s => {
+                      const parsed = typeof s === 'string' ? JSON.parse(s) : s;
+                      return parsed?.user_id === companyUserId;
+                    }),
+                  };
+                }
                 return msg;
               }));
             }
@@ -679,6 +745,16 @@ export function ChatProvider({ children }) {
                     let newContact = null;
                     
                     if (room.type === 'group') {
+                      let fileLabel = 'sent a file';
+                      if (m.type === 'file') {
+                        try {
+                          const fileMeta = typeof m.message === 'string' ? JSON.parse(m.message) : m.message;
+                          if (fileMeta?.type?.startsWith('image/')) {
+                            fileLabel = 'sent an image';
+                          }
+                        } catch (e) {}
+                      }
+
                       newContact = {
                         id: room.id,
                         roomId: room.id,
@@ -687,7 +763,7 @@ export function ChatProvider({ children }) {
                         color: getUserColor(room.id),
                         status: null,
                         role: 'Channel',
-                        lastMessage: m.type === 'file' ? 'sent a file' : m.message,
+                        lastMessage: m.type === 'file' ? fileLabel : m.message.replace(/\*([^*]+)\*/g, '$1').replace(/_([^_]+)_/g, '$1'),
                         timestamp: formatMessageTime(m.created_at),
                         rawTimestamp: m.created_at,
                         unread: m.created_by !== companyUserId ? 1 : 0,
@@ -704,6 +780,16 @@ export function ChatProvider({ children }) {
                           .single();
                         
                         if (cu) {
+                          let fileLabel = 'sent a file';
+                          if (m.type === 'file') {
+                            try {
+                              const fileMeta = typeof m.message === 'string' ? JSON.parse(m.message) : m.message;
+                              if (fileMeta?.type?.startsWith('image/')) {
+                                  fileLabel = 'sent an image';
+                              }
+                            } catch (e) {}
+                          }
+
                           newContact = {
                             id: cu.id,
                             roomId: room.id,
@@ -713,7 +799,7 @@ export function ChatProvider({ children }) {
                             status: cu.is_active ? 'online' : 'offline',
                             role: cu.department || cu.designation || 'Colleague',
                             lastSeen: cu.is_active ? 'Online' : 'Offline',
-                            lastMessage: m.type === 'file' ? 'sent a file' : m.message,
+                            lastMessage: m.type === 'file' ? fileLabel : m.message.replace(/\*([^*]+)\*/g, '$1').replace(/_([^_]+)_/g, '$1'),
                             timestamp: formatMessageTime(m.created_at),
                             rawTimestamp: m.created_at,
                             unread: m.created_by !== companyUserId ? 1 : 0,
@@ -745,7 +831,21 @@ export function ChatProvider({ children }) {
 
             const updated = prev.map(c => {
               if (c.roomId === m.room_id) {
-                let text = m.type === 'file' ? 'sent a file' : m.message;
+                let text = m.message;
+                if (m.type === 'file') {
+                  try {
+                    const fileMeta = typeof m.message === 'string' ? JSON.parse(m.message) : m.message;
+                    const isImg = fileMeta?.type?.startsWith('image/');
+                    text = `sent a ${isImg ? 'image' : 'file'}`;
+                  } catch (e) {
+                    text = 'sent a file';
+                  }
+                } else {
+                  text = text
+                    .replace(/\*([^*]+)\*/g, '$1')
+                    .replace(/_([^_]+)_/g, '$1');
+                }
+                
                 if (c.isChannel) {
                   const sender = prev.find(x => x.id === m.created_by) || (m.created_by === companyUserId ? currentUser : null);
                   const senderName = sender ? (m.created_by === companyUserId ? 'You' : sender.name.split(' ')[0]) : 'Someone';
@@ -921,6 +1021,147 @@ export function ChatProvider({ children }) {
     return () => supabase.removeChannel(channel);
   }, [companyUserId, setActiveNav]);
 
+  const handleToggleReaction = async (messageId, emoji) => {
+    try {
+      const { data: msg, error: fetchErr } = await supabase
+        .from('chat_messages')
+        .select('reaction_by_users')
+        .eq('id', messageId)
+        .single();
+
+      if (fetchErr) throw fetchErr;
+
+      let currentReactions = msg.reaction_by_users || [];
+      
+      const existingIdx = currentReactions.findIndex(r => {
+        const parsed = typeof r === 'string' ? JSON.parse(r) : r;
+        return parsed?.user_id === companyUserId;
+      });
+
+      let updatedReactions = [];
+      if (existingIdx !== -1) {
+        const parsed = typeof currentReactions[existingIdx] === 'string'
+          ? JSON.parse(currentReactions[existingIdx])
+          : currentReactions[existingIdx];
+
+        if (parsed?.reaction === emoji) {
+          updatedReactions = currentReactions.filter((_, idx) => idx !== existingIdx);
+        } else {
+          updatedReactions = [...currentReactions];
+          updatedReactions[existingIdx] = { user_id: companyUserId, reaction: emoji, reacted_at: new Date().toISOString() };
+        }
+      } else {
+        updatedReactions = [...currentReactions, { user_id: companyUserId, reaction: emoji, reacted_at: new Date().toISOString() }];
+      }
+
+      const { error: updateErr } = await supabase
+        .from('chat_messages')
+        .update({ reaction_by_users: updatedReactions })
+        .eq('id', messageId);
+
+      if (updateErr) throw updateErr;
+
+      setAllMessages(prev => prev.map(m => {
+        if (m.id === messageId) {
+          return { ...m, reactions: updatedReactions };
+        }
+        return m;
+      }));
+
+    } catch (err) {
+      console.error("Error in handleToggleReaction:", err);
+    }
+  };
+
+  const handleEditMessage = async (messageId, newText) => {
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .update({ message: newText, is_edited: true, updated_at: new Date().toISOString() })
+        .eq('id', messageId);
+
+      if (error) throw error;
+
+      setAllMessages(prev => prev.map(m => {
+        if (m.id === messageId) {
+          return { ...m, text: newText, isEdited: true };
+        }
+        return m;
+      }));
+    } catch (err) {
+      console.error("Error editing message:", err);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId) => {
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .update({ is_deleted: true, deleted_at: new Date().toISOString() })
+        .eq('id', messageId);
+
+      if (error) throw error;
+
+      setAllMessages(prev => prev.map(m => {
+        if (m.id === messageId) {
+          return { ...m, isDeleted: true };
+        }
+        return m;
+      }));
+    } catch (err) {
+      console.error("Error deleting message:", err);
+    }
+  };
+
+  const handleToggleStar = async (messageId) => {
+    try {
+      const { data: msg, error: fetchErr } = await supabase
+        .from('chat_messages')
+        .select('star_by_users')
+        .eq('id', messageId)
+        .single();
+
+      if (fetchErr) throw fetchErr;
+
+      let currentStars = msg.star_by_users || [];
+      const exists = currentStars.some(s => {
+        const parsed = typeof s === 'string' ? JSON.parse(s) : s;
+        return parsed?.user_id === companyUserId;
+      });
+
+      let updatedStars = [];
+      if (exists) {
+        updatedStars = currentStars.filter(s => {
+          const parsed = typeof s === 'string' ? JSON.parse(s) : s;
+          return parsed?.user_id !== companyUserId;
+        });
+      } else {
+        updatedStars = [...currentStars, { user_id: companyUserId }];
+      }
+
+      const { error: updateErr } = await supabase
+        .from('chat_messages')
+        .update({ star_by_users: updatedStars })
+        .eq('id', messageId);
+
+      if (updateErr) throw updateErr;
+
+      setAllMessages(prev => prev.map(m => {
+        if (m.id === messageId) {
+          return { ...m, isStarred: !exists };
+        }
+        return m;
+      }));
+
+      setChatAlert({
+        type: 'success',
+        message: exists ? 'Message unstarred' : 'Message starred'
+      });
+    } catch (err) {
+      console.error("Error toggling star:", err);
+    }
+  };
+
   const handleCreateGroup = async (name, participantIds) => {
     try {
       const { data: newRoom, error } = await supabase
@@ -956,7 +1197,10 @@ export function ChatProvider({ children }) {
     activeRoomTypingUsers,
     chatAlert, setChatAlert,
     isSearchOpen, setIsSearchOpen,
-    handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup
+    editingMessage, setEditingMessage,
+    quoteMessage, setQuoteMessage,
+    handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup, handleToggleReaction,
+    handleEditMessage, handleDeleteMessage, handleToggleStar
   };
 
   return (
