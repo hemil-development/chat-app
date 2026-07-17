@@ -22,6 +22,7 @@ export function ChatProvider({ children }) {
   const [isSearchOpen,  setIsSearchOpen]  = useState(false);
   const [editingMessage, setEditingMessage] = useState(null);
   const [quoteMessage, setQuoteMessage] = useState(null);
+  const [forwardingMessage, setForwardingMessage] = useState(null);
 
   const typingTimeoutsRef = useRef({});
   const activeChannelRef  = useRef(null);
@@ -144,6 +145,25 @@ export function ChatProvider({ children }) {
             }
           }
 
+          let isForwarded = msg.is_forwarded || false;
+          let msgText = msg.message || '';
+          if (msg.type === 'text') {
+            if (!isForwarded && msg.message) {
+              try {
+                const parsed = JSON.parse(msg.message);
+                if (parsed && typeof parsed === 'object' && 'isForwarded' in parsed) {
+                  msgText = parsed.text || '';
+                  isForwarded = true;
+                }
+              } catch (e) {
+                if (msg.message.startsWith('[Forwarded]\n')) {
+                  msgText = msg.message.substring(12);
+                  isForwarded = true;
+                }
+              }
+            }
+          }
+
           if (msg.type === 'file') {
             try {
               const fileMeta = typeof msg.message === 'string' ? JSON.parse(msg.message) : msg.message;
@@ -155,7 +175,7 @@ export function ChatProvider({ children }) {
           }
           
           // Strip markdown characters before returning
-          const cleanText = (msg.message || '')
+          const cleanText = msgText
             .replace(/\*([^*]+)\*/g, '$1')
             .replace(/_([^_]+)_/g, '$1');
           
@@ -325,39 +345,52 @@ export function ChatProvider({ children }) {
     if (contact.roomId) markMessagesAsRead(contact.roomId);
   }, [markMessagesAsRead, setActiveNav]);
 
+  const getOrCreateRoomForContact = async (contact) => {
+    if (contact.roomId) return contact.roomId;
+
+    const { data: existing } = await supabase
+      .from('chat_rooms')
+      .select('id')
+      .eq('type', 'single')
+      .contains('participants', [companyUserId, contact.id]);
+
+    if (existing && existing.length > 0) {
+      const roomId = existing[0].id;
+      setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, roomId } : c));
+      return roomId;
+    }
+
+    const roomName = `${currentUser?.name || 'User'} & ${contact.name}`;
+    const { data: newRoom, error: roomErr } = await supabase
+      .from('chat_rooms')
+      .insert({
+        type: 'single',
+        participants: [companyUserId, contact.id],
+        created_by: companyUserId,
+        name: roomName,
+        description: 'Direct message room',
+        typing_participants: []
+      })
+      .select()
+      .single();
+
+    if (roomErr) {
+      console.error("Failed to create room:", roomErr);
+      throw roomErr;
+    }
+
+    const roomId = newRoom.id;
+    setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, roomId } : c));
+    return roomId;
+  };
+
   const handleSend = async (text, files) => {
     if (!currentContact) return;
 
     try {
       let roomId = currentContact.roomId;
       if (!roomId) {
-        const { data: existing } = await supabase
-          .from('chat_rooms')
-          .select('id')
-          .eq('type', 'single')
-          .contains('participants', [companyUserId, currentContact.id]);
-
-        if (existing && existing.length > 0) {
-          roomId = existing[0].id;
-        } else {
-          const roomName = `${currentUser.name} & ${currentContact.name}`;
-          const { data: newRoom, error: roomErr } = await supabase
-            .from('chat_rooms')
-            .insert({
-              type: 'single',
-              participants: [companyUserId, currentContact.id],
-              created_by: companyUserId,
-              name: roomName,
-              description: 'Direct message room',
-              typing_participants: []
-            })
-            .select()
-            .single();
-
-          if (roomErr) return console.error("Failed to create room:", roomErr);
-          roomId = newRoom.id;
-        }
-        setContacts(prev => prev.map(c => c.id === currentContact.id ? { ...c, roomId } : c));
+        roomId = await getOrCreateRoomForContact(currentContact);
         setActiveContact(prev => prev ? { ...prev, roomId } : null);
       }
 
@@ -455,6 +488,98 @@ export function ChatProvider({ children }) {
       }
     } catch (err) {
       console.error("Error in handleSend:", err);
+    }
+  };
+
+  const handleForwardMessage = async (message, targetContacts) => {
+    try {
+      let forwardedMessageValue = '';
+      let forwardedType = message.type;
+      if (message.type === 'file') {
+        forwardedMessageValue = JSON.stringify(message.file);
+      } else {
+        forwardedMessageValue = message.text;
+      }
+ 
+      for (const contact of targetContacts) {
+        const roomId = await getOrCreateRoomForContact(contact);
+        
+        const { data: insertedMsg, error: msgErr } = await supabase
+          .from('chat_messages')
+          .insert({
+            room_id: roomId,
+            created_by: companyUserId,
+            message: forwardedMessageValue,
+            type: forwardedType,
+            is_forwarded: true
+          })
+          .select()
+          .single();
+
+        if (msgErr) {
+          console.error("Failed to insert forwarded message:", msgErr);
+          continue;
+        }
+
+        await supabase.from('chat_rooms').update({ last_message_id: insertedMsg.id }).eq('id', roomId);
+
+        if (currentContact && (currentContact.id === contact.id || currentContact.roomId === roomId)) {
+          setAllMessages(prev => {
+            if (prev.some(x => x.id === insertedMsg.id)) return prev;
+            
+            let fileMeta = null;
+            let text = message.text;
+            if (insertedMsg.type === 'file') {
+              fileMeta = message.file;
+              text = '';
+            }
+
+            return [...prev, {
+              id: insertedMsg.id,
+              senderId: 'me',
+              text: text,
+              file: fileMeta,
+              isForwarded: true,
+              timestamp: new Date(insertedMsg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+              type: insertedMsg.type || 'text',
+              createdAt: insertedMsg.created_at,
+              readByUsers: insertedMsg.read_by_users,
+              reactions: [],
+            }];
+          });
+        }
+
+        setContacts(prev => {
+          const updated = prev.map(c => {
+            if (c.id === contact.id || c.roomId === roomId) {
+              let preview = '';
+              if (insertedMsg.type === 'file') {
+                const isImg = message.file?.type?.startsWith('image/');
+                preview = `You: sent a ${isImg ? 'image' : 'file'}`;
+              } else {
+                const cleanText = message.text
+                  .replace(/\*([^*]+)\*/g, '$1')
+                  .replace(/_([^_]+)_/g, '$1');
+                preview = `You: ${cleanText}`;
+              }
+              return {
+                ...c,
+                roomId,
+                lastMessage: preview,
+                timestamp: formatMessageTime(insertedMsg.created_at),
+                rawTimestamp: insertedMsg.created_at,
+              };
+            }
+            return c;
+          });
+          return sortContacts(updated);
+        });
+      }
+
+      setChatAlert({ type: 'success', message: 'Message forwarded successfully' });
+    } catch (err) {
+      console.error("Error in handleForwardMessage:", err);
+      setChatAlert({ type: 'error', message: 'Failed to forward message' });
     }
   };
 
@@ -571,14 +696,35 @@ export function ChatProvider({ children }) {
         const formatted = (data || []).map(m => {
           let fileMeta = null;
           let text = m.message;
-          if (m.type === 'file') {
-            try { fileMeta = JSON.parse(m.message); text = ''; } catch(e) {}
+          let isForwarded = m.is_forwarded || false;
+          if (!isForwarded) {
+            if (m.type === 'file') {
+              try { fileMeta = JSON.parse(m.message); text = ''; isForwarded = !!fileMeta?.isForwarded; } catch(e) {}
+            } else {
+              try {
+                const parsed = JSON.parse(m.message);
+                if (parsed && typeof parsed === 'object' && 'isForwarded' in parsed) {
+                  text = parsed.text || '';
+                  isForwarded = true;
+                }
+              } catch (e) {
+                if (m.message && m.message.startsWith('[Forwarded]\n')) {
+                  text = m.message.substring(12);
+                  isForwarded = true;
+                }
+              }
+            }
+          } else {
+            if (m.type === 'file') {
+              try { fileMeta = JSON.parse(m.message); text = ''; } catch(e) {}
+            }
           }
           return {
             id: m.id,
             senderId: m.created_by === companyUserId ? 'me' : m.created_by,
             text,
             file: fileMeta,
+            isForwarded,
             timestamp: new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
             type: m.type || 'text',
             createdAt: m.created_at,
@@ -616,8 +762,28 @@ export function ChatProvider({ children }) {
                 if (prev.some(x => x.id === m.id)) return prev;
                 let fileMeta = null;
                 let text = m.message;
-                if (m.type === 'file') {
-                  try { fileMeta = JSON.parse(m.message); text = ''; } catch(e) {}
+                let isForwarded = m.is_forwarded || false;
+                if (!isForwarded) {
+                  if (m.type === 'file') {
+                    try { fileMeta = JSON.parse(m.message); text = ''; isForwarded = !!fileMeta?.isForwarded; } catch(e) {}
+                  } else {
+                    try {
+                      const parsed = JSON.parse(m.message);
+                      if (parsed && typeof parsed === 'object' && 'isForwarded' in parsed) {
+                        text = parsed.text || '';
+                        isForwarded = true;
+                      }
+                    } catch (e) {
+                      if (m.message && m.message.startsWith('[Forwarded]\n')) {
+                        text = m.message.substring(12);
+                        isForwarded = true;
+                      }
+                    }
+                  }
+                } else {
+                  if (m.type === 'file') {
+                    try { fileMeta = JSON.parse(m.message); text = ''; } catch(e) {}
+                  }
                 }
                 return [
                   ...prev,
@@ -626,6 +792,7 @@ export function ChatProvider({ children }) {
                     senderId: m.created_by === companyUserId ? 'me' : m.created_by,
                     text,
                     file: fileMeta,
+                    isForwarded,
                     timestamp: new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
                     type: m.type || 'text',
                     createdAt: m.created_at,
@@ -657,13 +824,34 @@ export function ChatProvider({ children }) {
                 if (msg.id === m.id) {
                   let fileMeta = null;
                   let text = m.message;
-                  if (m.type === 'file') {
-                    try { fileMeta = JSON.parse(m.message); text = ''; } catch(e) {}
+                  let isForwarded = m.is_forwarded || false;
+                  if (!isForwarded) {
+                    if (m.type === 'file') {
+                      try { fileMeta = JSON.parse(m.message); text = ''; isForwarded = !!fileMeta?.isForwarded; } catch(e) {}
+                    } else {
+                      try {
+                        const parsed = JSON.parse(m.message);
+                        if (parsed && typeof parsed === 'object' && 'isForwarded' in parsed) {
+                          text = parsed.text || '';
+                          isForwarded = true;
+                        }
+                      } catch (e) {
+                        if (m.message && m.message.startsWith('[Forwarded]\n')) {
+                          text = m.message.substring(12);
+                          isForwarded = true;
+                        }
+                      }
+                    }
+                  } else {
+                    if (m.type === 'file') {
+                      try { fileMeta = JSON.parse(m.message); text = ''; } catch(e) {}
+                    }
                   }
                   return { 
                     ...msg, 
                     text,
                     file: fileMeta,
+                    isForwarded,
                     readByUsers: m.read_by_users, 
                     reactions: m.reaction_by_users || [],
                     isEdited: m.is_edited,
@@ -831,6 +1019,7 @@ export function ChatProvider({ children }) {
 
             const updated = prev.map(c => {
               if (c.roomId === m.room_id) {
+                let isForwarded = m.is_forwarded || false;
                 let text = m.message;
                 if (m.type === 'file') {
                   try {
@@ -841,6 +1030,20 @@ export function ChatProvider({ children }) {
                     text = 'sent a file';
                   }
                 } else {
+                  if (!isForwarded && text) {
+                    try {
+                      const parsed = JSON.parse(text);
+                      if (parsed && typeof parsed === 'object' && 'isForwarded' in parsed) {
+                        text = parsed.text || '';
+                        isForwarded = true;
+                      }
+                    } catch (e) {
+                      if (text.startsWith('[Forwarded]\n')) {
+                        text = text.substring(12);
+                        isForwarded = true;
+                      }
+                    }
+                  }
                   text = text
                     .replace(/\*([^*]+)\*/g, '$1')
                     .replace(/_([^_]+)_/g, '$1');
@@ -1199,8 +1402,9 @@ export function ChatProvider({ children }) {
     isSearchOpen, setIsSearchOpen,
     editingMessage, setEditingMessage,
     quoteMessage, setQuoteMessage,
+    forwardingMessage, setForwardingMessage,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup, handleToggleReaction,
-    handleEditMessage, handleDeleteMessage, handleToggleStar
+    handleEditMessage, handleDeleteMessage, handleToggleStar, handleForwardMessage
   };
 
   return (

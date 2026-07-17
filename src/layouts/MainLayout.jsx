@@ -2,38 +2,40 @@ import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 
-import { Sidebar }      from '../components/Sidebar';
-import { ChatList }     from '../components/ChatList';
-import { ChatHeader }   from '../components/ChatHeader';
-import { MessageArea }  from '../components/MessageArea';
+import { Sidebar } from '../components/Sidebar';
+import { ChatList } from '../components/ChatList';
+import { ChatHeader } from '../components/ChatHeader';
+import { MessageArea } from '../components/MessageArea';
 import { MessageInput } from '../components/MessageInput';
-import { FilesPanel }   from '../components/FilesPanel';
+import { FilesPanel } from '../components/FilesPanel';
 import { StarredPanel } from '../components/StarredPanel';
-import { SearchPanel }  from '../components/SearchPanel';
-import { EmptyState }       from '../components/chat/EmptyState';
+import { SearchPanel } from '../components/SearchPanel';
+import { EmptyState } from '../components/chat/EmptyState';
 import { NotificationList } from '../components/chat/NotificationList';
-import { StarredSidebar }   from '../components/chat/StarredSidebar';
-import { FilesSidebar }     from '../components/chat/FilesSidebar';
-import { FileViewer }       from '../components/chat/FileViewer';
-import { Login }            from '../components/Login';
+import { StarredSidebar } from '../components/chat/StarredSidebar';
+import { FilesSidebar } from '../components/chat/FilesSidebar';
+import { FileViewer } from '../components/chat/FileViewer';
+import { Login } from '../components/Login';
+import { ForwardSidebar } from '../components/chat/ForwardSidebar';
 
 export function MainLayout() {
   const { session, authLoading } = useAuth();
-  
+
   const {
     activeNav, setActiveNav,
-    contacts, 
-    activeContact, 
+    contacts,
+    activeContact,
     activeTab, setActiveTab,
     allMessages,
     loading,
-    notifications, 
+    notifications,
     viewingFile, setViewingFile,
     currentUser, currentContact,
     activeRoomTypingUsers,
     chatAlert, setChatAlert,
     isSearchOpen, setIsSearchOpen,
-    handleSend, handleFileUpload, handleSelect, sendTypingStatus
+    handleSend, handleFileUpload, handleSelect, sendTypingStatus,
+    forwardingMessage
   } = useChat();
 
   if (authLoading) {
@@ -102,11 +104,11 @@ export function MainLayout() {
                 {(() => {
                   const isSuccess = chatAlert.type === 'success';
                   const isInfo = chatAlert.type === 'info';
-                  
+
                   let borderClass = 'border-[#ef4444]';
                   let iconColor = 'text-[#ef4444]';
                   let Icon = AlertCircle;
-                  
+
                   if (isSuccess) {
                     borderClass = 'border-[#22c55e]';
                     iconColor = 'text-[#22c55e]';
@@ -116,14 +118,14 @@ export function MainLayout() {
                     iconColor = 'text-[#3b82f6]';
                     Icon = Info;
                   }
-                  
+
                   return (
                     <div className={`bg-white border-l-4 rounded-xl shadow-lg px-4 py-3 flex items-center justify-between gap-3 border border-y-[#e2e8f0] border-r-[#e2e8f0] ${borderClass}`}>
                       <div className="flex items-center gap-2.5">
                         <Icon size={16} className={`${iconColor} shrink-0`} />
                         <span className="text-[13px] font-semibold text-[#0f172a]">{chatAlert.message}</span>
                       </div>
-                      <button 
+                      <button
                         onClick={() => setChatAlert(null)}
                         className="text-[#94a3b8] hover:text-[#475569] transition-colors"
                       >
@@ -147,27 +149,29 @@ export function MainLayout() {
                   isSearchOpen={isSearchOpen}
                   setIsSearchOpen={setIsSearchOpen}
                 />
-                <MessageInput 
-                  onSendMessage={handleSend} 
-                  onTyping={sendTypingStatus} 
-                  contacts={contacts} 
+                <MessageInput
+                  onSendMessage={handleSend}
+                  onTyping={sendTypingStatus}
+                  contacts={contacts}
                   onViewFile={setViewingFile}
                 />
               </>
             )}
 
-            {activeTab === 'files'   && <FilesPanel />}
+            {activeTab === 'files' && <FilesPanel />}
             {activeTab === 'starred' && <StarredPanel />}
-            {activeTab === 'search'  && <SearchPanel />}
+            {activeTab === 'search' && <SearchPanel />}
           </>
         ) : (
           <EmptyState contacts={contacts} />
         )}
       </main>
-      
-      {viewingFile && (
-        <FileViewer file={viewingFile} onClose={() => setViewingFile(null)} />
-      )}
+
+      {/* Forward Message Sidebar */}
+      {forwardingMessage && <ForwardSidebar />}
+
+      {/* File Viewer Modal Overlay */}
+      {viewingFile && <FileViewer file={viewingFile} onClose={() => setViewingFile(null)} />}
     </div>
   );
 }

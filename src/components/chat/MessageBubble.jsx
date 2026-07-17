@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { FileCard } from './FileCard';
-import { Smile, ChevronLeft, ChevronRight, MoreVertical, Pencil, Quote, Share2, Copy, Star, Trash2 } from 'lucide-react';
+import { Smile, ChevronLeft, ChevronRight, MoreVertical, Pencil, Quote, Share2, Copy, Star, Trash2, CornerUpRight } from 'lucide-react';
 import { useChat } from '../../context/ChatContext';
 
 const REACTION_PAGES = [
@@ -70,21 +70,23 @@ function renderMessageText(text) {
 }
 
 export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }) {
-  const { 
-    companyUserId, 
-    handleToggleReaction, 
-    setEditingMessage, 
-    setQuoteMessage, 
-    handleToggleStar, 
+  const {
+    companyUserId,
+    handleToggleReaction,
+    setEditingMessage,
+    setQuoteMessage,
+    handleToggleStar,
     handleDeleteMessage,
     setChatAlert,
-    contacts
+    contacts,
+    setForwardingMessage
   } = useChat();
 
   const [showPopover, setShowPopover] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [page, setPage] = useState(0);
   const [hoveredReaction, setHoveredReaction] = useState(null);
+  const [menuDirection, setMenuDirection] = useState('down'); // 'up' or 'down'
 
   // Close context menu and reactions popover when clicking anywhere else or scrolling
   useEffect(() => {
@@ -144,7 +146,13 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
     if (isImage && message.file?.url) {
       bubbleContent = (
         <div className="flex flex-col items-start gap-1">
-          <div 
+          {message.isForwarded && (
+            <div className="text-[10px] font-semibold text-slate-400 flex items-center gap-1 mb-1 pl-1 select-none">
+              <CornerUpRight size={11} strokeWidth={2.5} />
+              <span>Forwarded</span>
+            </div>
+          )}
+          <div
             onClick={() => onViewFile && onViewFile(message.file)}
             className={clsx(
               'mt-1 cursor-pointer overflow-hidden rounded-xl animate-slide-up hover:opacity-90 transition-all border w-fit',
@@ -152,9 +160,9 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
               isHighlighted && 'ring-2 ring-[#f59e0b] ring-offset-1 ring-offset-white'
             )}
           >
-            <img 
-              src={message.file.url} 
-              alt={message.file.name} 
+            <img
+              src={message.file.url}
+              alt={message.file.name}
               className="max-w-[280px] max-h-[280px] object-cover block"
             />
           </div>
@@ -169,8 +177,8 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
                   }}
                   className={clsx(
                     "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-all border shadow-xs select-none",
-                    r.hasReacted 
-                      ? "bg-indigo-50 border-indigo-200 text-indigo-600" 
+                    r.hasReacted
+                      ? "bg-indigo-50 border-indigo-200 text-indigo-600"
                       : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
                   )}
                 >
@@ -184,30 +192,38 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
       );
     } else {
       bubbleContent = (
-        <div className={clsx("flex flex-col items-start gap-1 transition-all rounded-xl", isHighlighted && "ring-2 ring-[#f59e0b] ring-offset-1 ring-offset-white")}>
-          <FileCard file={message.file} isMe={isMe} onViewFile={onViewFile} />
-          {parsedReactions.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1 pl-1">
-              {parsedReactions.map(r => (
-                <button
-                  key={r.emoji}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleToggleReaction(message.id, r.emoji);
-                  }}
-                  className={clsx(
-                    "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-all border shadow-xs select-none",
-                    r.hasReacted 
-                      ? "bg-indigo-50 border-indigo-200 text-indigo-600" 
-                      : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
-                  )}
-                >
-                  <span>{r.emoji}</span>
-                  {r.count > 1 && <span>{r.count}</span>}
-                </button>
-              ))}
+        <div className="flex flex-col items-start gap-1">
+          {message.isForwarded && (
+            <div className="text-[10px] font-semibold text-slate-400 flex items-center gap-1 mb-1 pl-1 select-none">
+              <CornerUpRight size={11} strokeWidth={2.5} />
+              <span>Forwarded</span>
             </div>
           )}
+          <div className={clsx("flex flex-col items-start gap-1 transition-all rounded-xl", isHighlighted && "ring-2 ring-[#f59e0b] ring-offset-1 ring-offset-white")}>
+            <FileCard file={message.file} isMe={isMe} onViewFile={onViewFile} />
+            {parsedReactions.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1 pl-1">
+                {parsedReactions.map(r => (
+                  <button
+                    key={r.emoji}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleReaction(message.id, r.emoji);
+                    }}
+                    className={clsx(
+                      "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-all border shadow-xs select-none",
+                      r.hasReacted
+                        ? "bg-indigo-50 border-indigo-200 text-indigo-600"
+                        : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
+                    )}
+                  >
+                    <span>{r.emoji}</span>
+                    {r.count > 1 && <span>{r.count}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       );
     }
@@ -220,8 +236,17 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
           : 'bg-[#f8fafc] border border-[#e2e8f0] text-[#0f172a] rounded-2xl rounded-tl-sm self-start',
         isHighlighted && 'ring-2 ring-[#f59e0b] ring-offset-1 ring-offset-white'
       )}>
+        {message.isForwarded && (
+          <div className={clsx(
+            "text-[10px] font-semibold flex items-center gap-1 mb-1.5 select-none",
+            isMe ? "text-indigo-200/80" : "text-slate-400"
+          )}>
+            <CornerUpRight size={11} strokeWidth={2.5} />
+            <span>Forwarded</span>
+          </div>
+        )}
         <div className="pb-0.5">{renderMessageText(message.text)}</div>
-        
+
         {parsedReactions.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5 pb-1">
             {parsedReactions.map(r => (
@@ -233,10 +258,10 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
                 }}
                 className={clsx(
                   "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-all border shadow-xs select-none",
-                  r.hasReacted 
-                    ? "bg-indigo-50/20 border-indigo-300/30 text-white" 
-                    : isMe 
-                      ? "bg-white/10 border-white/10 text-white/90 hover:bg-white/20" 
+                  r.hasReacted
+                    ? "bg-indigo-50/20 border-indigo-300/30 text-white"
+                    : isMe
+                      ? "bg-white/10 border-white/10 text-white/90 hover:bg-white/20"
                       : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
                 )}
               >
@@ -262,7 +287,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
 
   return (
     <div className={clsx("relative flex items-center gap-2 group/bubble max-w-full", isMe ? "flex-row-reverse self-end" : "flex-row self-start")}>
-      
+
       {bubbleContent}
 
       {/* Smiley Hover Reaction Trigger Button & Action Dropdown Trigger */}
@@ -270,13 +295,19 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
         "relative transition-opacity flex-shrink-0 flex items-center gap-1 z-30",
         (showMenu || showPopover) ? "opacity-100" : "opacity-0 group-hover/bubble:opacity-100"
       )}>
-        
+
         {/* Smile Button */}
         {!isMe && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               setShowMenu(false);
+              if (!showPopover) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const windowHeight = window.innerHeight;
+                const spaceBelow = windowHeight - rect.bottom;
+                setMenuDirection(spaceBelow < 220 ? 'up' : 'down');
+              }
               setShowPopover(v => !v);
             }}
             className={clsx(
@@ -296,6 +327,12 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
             onClick={(e) => {
               e.stopPropagation();
               setShowPopover(false);
+              if (!showMenu) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const windowHeight = window.innerHeight;
+                const spaceBelow = windowHeight - rect.bottom;
+                setMenuDirection(spaceBelow < 220 ? 'up' : 'down');
+              }
               setShowMenu(v => !v);
             }}
             className={clsx(
@@ -310,7 +347,10 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
 
           {/* Actions Dropdown Menu */}
           {showMenu && (
-            <div className="absolute top-full mt-1 right-0 z-50 bg-white border border-[#e2e8f0] rounded-xl shadow-lg py-1 w-[150px] animate-scale-in">
+            <div className={clsx(
+              "absolute z-50 bg-white border border-[#e2e8f0] rounded-xl shadow-lg py-1 w-[150px] animate-scale-in right-0",
+              menuDirection === 'up' ? "bottom-full mb-1" : "top-full mt-1"
+            )}>
               {canEdit && (
                 <button
                   onClick={() => {
@@ -339,8 +379,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
 
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(message.text || '');
-                  setChatAlert({ type: 'success', message: 'Message copied for forwarding' });
+                  setForwardingMessage(message);
                   setShowMenu(false);
                 }}
                 className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
@@ -392,7 +431,12 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
 
         {/* Smiley Popover React Emojis */}
         {showPopover && (
-          <div className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 z-50 bg-white border border-[#e2e8f0] rounded-xl shadow-lg p-1.5 flex flex-col items-center gap-1.5 animate-scale-in max-w-[280px] before:content-[''] before:absolute before:bottom-full before:left-1/2 before:-translate-x-1/2 before:border-4 before:border-transparent before:border-b-white">
+          <div className={clsx(
+            "absolute left-1/2 -translate-x-1/2 z-50 bg-white border border-[#e2e8f0] rounded-xl shadow-lg p-1.5 flex flex-col items-center gap-1.5 animate-scale-in max-w-[280px] before:content-[''] before:absolute before:left-1/2 before:-translate-x-1/2 before:border-4 before:border-transparent",
+            menuDirection === 'up'
+              ? "bottom-full mb-1.5 before:top-full before:border-t-white"
+              : "top-full mt-1.5 before:bottom-full before:border-b-white"
+          )}>
             <div className="flex items-center gap-1">
               <button
                 onClick={(e) => {
@@ -403,7 +447,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
               >
                 <ChevronLeft size={13} strokeWidth={2.5} />
               </button>
-              
+
               <div className="flex items-center gap-0.5">
                 {REACTION_PAGES[page].map(item => (
                   <div
@@ -445,7 +489,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
           </div>
         )}
       </div>
-      
+
     </div>
   );
 }
