@@ -75,3 +75,18 @@
     padding: 2px 6px;
   }
 }
+
+.rich-editor:empty::before {
+  content: attr(placeholder);
+  color: #94a3b8;
+  pointer-events: none;
+  display: inline-block;
+}
+
+@keyframes slideDownAlert {
+  from { transform: translate(-50%, -20px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+.animate-slide-down-alert {
+  animation: slideDownAlert 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

@@ -1,5 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
+import { AlertCircle, X } from 'lucide-react';
 
 import { Sidebar }      from '../components/Sidebar';
 import { ChatList }     from '../components/ChatList';
@@ -29,6 +30,7 @@ export function MainLayout() {
     viewingFile, setViewingFile,
     currentUser, currentContact,
     activeRoomTypingUsers,
+    chatAlert, setChatAlert,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus
   } = useChat();
 
@@ -93,6 +95,23 @@ export function MainLayout() {
               onTabChange={setActiveTab}
             />
 
+            {chatAlert && (
+              <div className="absolute top-[72px] left-1/2 z-[90] w-full max-w-[400px] px-4 animate-slide-down-alert">
+                <div className="bg-white border-l-4 border-[#ef4444] rounded-xl shadow-lg px-4 py-3 flex items-center justify-between gap-3 border border-y-[#e2e8f0] border-r-[#e2e8f0]">
+                  <div className="flex items-center gap-2.5">
+                    <AlertCircle size={16} className="text-[#ef4444] shrink-0" />
+                    <span className="text-[13px] font-semibold text-[#0f172a]">{chatAlert.message}</span>
+                  </div>
+                  <button 
+                    onClick={() => setChatAlert(null)}
+                    className="text-[#94a3b8] hover:text-[#475569] transition-colors"
+                  >
+                    <X size={14} strokeWidth={2.5} />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'chat' && (
               <>
                 <MessageArea
@@ -105,9 +124,9 @@ export function MainLayout() {
                 />
                 <MessageInput 
                   onSendMessage={handleSend} 
-                  onFileUpload={handleFileUpload}
                   onTyping={sendTypingStatus} 
                   contacts={contacts} 
+                  onViewFile={setViewingFile}
                 />
               </>
             )}
