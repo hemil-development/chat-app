@@ -19,6 +19,7 @@ export function ChatProvider({ children }) {
   const [viewingFile,   setViewingFile]   = useState(null);
   const [currentUser,   setCurrentUser]   = useState(null);
   const [chatAlert,     setChatAlert]     = useState(null);
+  const [isSearchOpen,  setIsSearchOpen]  = useState(false);
   const [editingMessage, setEditingMessage] = useState(null);
   const [quoteMessage, setQuoteMessage] = useState(null);
   const [forwardingMessage, setForwardingMessage] = useState(null);
@@ -1398,6 +1399,7 @@ export function ChatProvider({ children }) {
     currentUser, currentContact,
     activeRoomTypingUsers,
     chatAlert, setChatAlert,
+    isSearchOpen, setIsSearchOpen,
     editingMessage, setEditingMessage,
     quoteMessage, setQuoteMessage,
     forwardingMessage, setForwardingMessage,

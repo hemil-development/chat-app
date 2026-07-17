@@ -1,5 +1,5 @@
-import { useRef, useEffect } from 'react';
-import { Check, CheckCheck } from 'lucide-react';
+import { useRef, useEffect, useState, useMemo } from 'react';
+import { Check, CheckCheck, Search, X, ChevronUp, ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
 import { Avatar } from './ui/Avatar';
 import { DateDivider } from './chat/DateDivider';
@@ -37,9 +37,60 @@ function groupMessages(messages) {
   return groups;
 }
 
-export function MessageArea({ messages, contact, currentUser, contacts = [], typingUsers = [], onViewFile }) {
+export function MessageArea({ messages, contact, currentUser, contacts = [], typingUsers = [], onViewFile, isSearchOpen, setIsSearchOpen }) {
   const endRef = useRef(null);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'auto' }); }, [messages]);
+  const containerRef = useRef(null);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+
+  // Auto scroll to bottom when new messages arrive (if not searching)
+  useEffect(() => { 
+    if (!isSearchOpen && !searchQuery) {
+      endRef.current?.scrollIntoView({ behavior: 'auto' }); 
+    }
+  }, [messages, isSearchOpen, searchQuery]);
+
+  // Find matches
+  const matches = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase();
+    return messages.filter(m => {
+      if (m.type === 'text' && m.text?.toLowerCase().includes(query)) return true;
+      if (m.type === 'file' && m.file?.name?.toLowerCase().includes(query)) return true;
+      return false;
+    });
+  }, [messages, searchQuery]);
+
+  // Handle Match Navigation
+  useEffect(() => {
+    if (matches.length > 0) {
+      setActiveMatchIndex(matches.length - 1); // Start at the most recent match
+    } else {
+      setActiveMatchIndex(0);
+    }
+  }, [matches]);
+
+  useEffect(() => {
+    if (matches.length > 0 && matches[activeMatchIndex]) {
+      const matchId = matches[activeMatchIndex].id;
+      const el = document.getElementById(`msg-${matchId}`);
+      if (el && containerRef.current) {
+        // Scroll the container so the element is roughly in the middle
+        const container = containerRef.current;
+        const offset = el.offsetTop - (container.clientHeight / 2);
+        container.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
+      }
+    }
+  }, [activeMatchIndex, matches]);
+
+  const handleNextMatch = () => {
+    setActiveMatchIndex(prev => (prev < matches.length - 1 ? prev + 1 : 0));
+  };
+
+  const handlePrevMatch = () => {
+    setActiveMatchIndex(prev => (prev > 0 ? prev - 1 : matches.length - 1));
+  };
 
   const getSender = (senderId) => {
     if (senderId === 'me' || senderId === currentUser?.id) return currentUser;
@@ -70,8 +121,55 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
   });
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white py-6">
-      {groupsWithDivider.map((group, gi) => {
+    <div className="flex-1 flex flex-col min-h-0 bg-white relative">
+      {/* Inline Search Bar */}
+      {isSearchOpen && (
+        <div className="absolute top-0 left-0 right-0 bg-white border-b border-[#e2e8f0] z-10 px-4 py-2 flex items-center shadow-sm animate-fade-in">
+          <Search size={16} className="text-[#94a3b8]" />
+          <input
+            autoFocus
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search in chat..."
+            className="flex-1 ml-3 bg-transparent border-none outline-none text-[14px] text-[#0f172a] placeholder-[#94a3b8]"
+          />
+          {searchQuery && (
+            <div className="flex items-center gap-2 mr-3 text-[12px] font-medium text-[#64748b]">
+              <span>{matches.length > 0 ? activeMatchIndex + 1 : 0} / {matches.length}</span>
+              <div className="flex items-center border border-[#e2e8f0] rounded-lg overflow-hidden bg-[#f8fafc]">
+                <button 
+                  onClick={handlePrevMatch} 
+                  disabled={matches.length === 0}
+                  className="p-1 hover:bg-[#e2e8f0] transition-colors disabled:opacity-50"
+                >
+                  <ChevronUp size={16} />
+                </button>
+                <div className="w-px h-4 bg-[#e2e8f0]" />
+                <button 
+                  onClick={handleNextMatch} 
+                  disabled={matches.length === 0}
+                  className="p-1 hover:bg-[#e2e8f0] transition-colors disabled:opacity-50"
+                >
+                  <ChevronDown size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+          <button 
+            onClick={() => {
+              setIsSearchOpen(false);
+              setSearchQuery('');
+            }}
+            className="p-1.5 text-[#64748b] hover:bg-[#f1f5f9] rounded-lg transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      <div ref={containerRef} className="flex-1 overflow-y-auto py-6">
+        {groupsWithDivider.map((group, gi) => {
         const isMe = group.senderId === 'me' || group.senderId === currentUser?.id;
         const sender = getSender(group.senderId);
 
@@ -111,14 +209,18 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
                     <Check size={13} className="text-indigo-200/80" />
                   );
 
+                  const isHighlighted = matches.length > 0 && matches[activeMatchIndex]?.id === msg.id;
+
                   return (
-                    <MessageBubble
-                      key={msg.id}
-                      message={msg}
-                      isMe={isMe}
-                      tick={tick}
-                      onViewFile={onViewFile}
-                    />
+                    <div key={msg.id} id={`msg-${msg.id}`}>
+                      <MessageBubble
+                        message={msg}
+                        isMe={isMe}
+                        tick={tick}
+                        onViewFile={onViewFile}
+                        isHighlighted={isHighlighted}
+                      />
+                    </div>
                   );
                 })}
               </div>
@@ -139,7 +241,7 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
         </div>
       )}
 
-      <div ref={endRef} />
+      </div>
     </div>
   );
 }

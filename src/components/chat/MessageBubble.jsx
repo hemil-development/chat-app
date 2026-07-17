@@ -69,13 +69,13 @@ function renderMessageText(text) {
   return <span dangerouslySetInnerHTML={{ __html: escaped }} />;
 }
 
-export function MessageBubble({ message, isMe, tick, onViewFile }) {
-  const { 
-    companyUserId, 
-    handleToggleReaction, 
-    setEditingMessage, 
-    setQuoteMessage, 
-    handleToggleStar, 
+export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }) {
+  const {
+    companyUserId,
+    handleToggleReaction,
+    setEditingMessage,
+    setQuoteMessage,
+    handleToggleStar,
     handleDeleteMessage,
     setChatAlert,
     contacts,
@@ -111,8 +111,9 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
     return (
       <div className={clsx("relative flex items-center gap-2 group/bubble max-w-full", isMe ? "self-end" : "self-start")}>
         <div className={clsx(
-          'relative px-4 py-2 text-[13px] leading-relaxed italic text-slate-400 select-none shadow-sm rounded-2xl border bg-slate-50 border-slate-100',
-          isMe ? 'rounded-tr-sm self-end' : 'rounded-tl-sm self-start'
+          'relative px-4 py-2 text-[13px] leading-relaxed italic text-slate-400 select-none shadow-sm rounded-2xl border bg-slate-50 border-slate-100 transition-all',
+          isMe ? 'rounded-tr-sm self-end' : 'rounded-tl-sm self-start',
+          isHighlighted && 'ring-2 ring-[#f59e0b] ring-offset-1 ring-offset-white'
         )}>
           This message was deleted.
         </div>
@@ -151,16 +152,17 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
               <span>Forwarded</span>
             </div>
           )}
-          <div 
+          <div
             onClick={() => onViewFile && onViewFile(message.file)}
             className={clsx(
-              'mt-1 cursor-pointer overflow-hidden rounded-xl animate-slide-up hover:opacity-90 transition-opacity border w-fit',
-              isMe ? 'border-[#4338ca] shadow-sm' : 'border-[#e2e8f0] shadow-sm'
+              'mt-1 cursor-pointer overflow-hidden rounded-xl animate-slide-up hover:opacity-90 transition-all border w-fit',
+              isMe ? 'border-[#4338ca] shadow-sm' : 'border-[#e2e8f0] shadow-sm',
+              isHighlighted && 'ring-2 ring-[#f59e0b] ring-offset-1 ring-offset-white'
             )}
           >
-            <img 
-              src={message.file.url} 
-              alt={message.file.name} 
+            <img
+              src={message.file.url}
+              alt={message.file.name}
               className="max-w-[280px] max-h-[280px] object-cover block"
             />
           </div>
@@ -175,8 +177,8 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
                   }}
                   className={clsx(
                     "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-all border shadow-xs select-none",
-                    r.hasReacted 
-                      ? "bg-indigo-50 border-indigo-200 text-indigo-600" 
+                    r.hasReacted
+                      ? "bg-indigo-50 border-indigo-200 text-indigo-600"
                       : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
                   )}
                 >
@@ -197,39 +199,42 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
               <span>Forwarded</span>
             </div>
           )}
-          <FileCard file={message.file} isMe={isMe} onViewFile={onViewFile} />
-          {parsedReactions.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1 pl-1">
-              {parsedReactions.map(r => (
-                <button
-                  key={r.emoji}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleToggleReaction(message.id, r.emoji);
-                  }}
-                  className={clsx(
-                    "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-all border shadow-xs select-none",
-                    r.hasReacted 
-                      ? "bg-indigo-50 border-indigo-200 text-indigo-600" 
-                      : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
-                  )}
-                >
-                  <span>{r.emoji}</span>
-                  {r.count > 1 && <span>{r.count}</span>}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className={clsx("flex flex-col items-start gap-1 transition-all rounded-xl", isHighlighted && "ring-2 ring-[#f59e0b] ring-offset-1 ring-offset-white")}>
+            <FileCard file={message.file} isMe={isMe} onViewFile={onViewFile} />
+            {parsedReactions.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1 pl-1">
+                {parsedReactions.map(r => (
+                  <button
+                    key={r.emoji}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleReaction(message.id, r.emoji);
+                    }}
+                    className={clsx(
+                      "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-all border shadow-xs select-none",
+                      r.hasReacted
+                        ? "bg-indigo-50 border-indigo-200 text-indigo-600"
+                        : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
+                    )}
+                  >
+                    <span>{r.emoji}</span>
+                    {r.count > 1 && <span>{r.count}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       );
     }
   } else {
     bubbleContent = (
       <div className={clsx(
-        'relative px-4 pt-2 pb-5 text-[14px] leading-relaxed whitespace-pre-wrap break-words w-fit min-w-[80px] shadow-sm animate-slide-up flex flex-col',
+        'relative px-4 pt-2 pb-5 text-[14px] leading-relaxed whitespace-pre-wrap break-words w-fit min-w-[80px] shadow-sm animate-slide-up flex flex-col transition-all',
         isMe
           ? 'bg-[#4f46e5] text-white rounded-2xl rounded-tr-sm self-end'
-          : 'bg-[#f8fafc] border border-[#e2e8f0] text-[#0f172a] rounded-2xl rounded-tl-sm self-start'
+          : 'bg-[#f8fafc] border border-[#e2e8f0] text-[#0f172a] rounded-2xl rounded-tl-sm self-start',
+        isHighlighted && 'ring-2 ring-[#f59e0b] ring-offset-1 ring-offset-white'
       )}>
         {message.isForwarded && (
           <div className={clsx(
@@ -241,7 +246,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
           </div>
         )}
         <div className="pb-0.5">{renderMessageText(message.text)}</div>
-        
+
         {parsedReactions.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5 pb-1">
             {parsedReactions.map(r => (
@@ -253,10 +258,10 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
                 }}
                 className={clsx(
                   "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-all border shadow-xs select-none",
-                  r.hasReacted 
-                    ? "bg-indigo-50/20 border-indigo-300/30 text-white" 
-                    : isMe 
-                      ? "bg-white/10 border-white/10 text-white/90 hover:bg-white/20" 
+                  r.hasReacted
+                    ? "bg-indigo-50/20 border-indigo-300/30 text-white"
+                    : isMe
+                      ? "bg-white/10 border-white/10 text-white/90 hover:bg-white/20"
                       : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
                 )}
               >
@@ -282,7 +287,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
 
   return (
     <div className={clsx("relative flex items-center gap-2 group/bubble max-w-full", isMe ? "flex-row-reverse self-end" : "flex-row self-start")}>
-      
+
       {bubbleContent}
 
       {/* Smiley Hover Reaction Trigger Button & Action Dropdown Trigger */}
@@ -290,7 +295,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
         "relative transition-opacity flex-shrink-0 flex items-center gap-1 z-30",
         (showMenu || showPopover) ? "opacity-100" : "opacity-0 group-hover/bubble:opacity-100"
       )}>
-        
+
         {/* Smile Button */}
         {!isMe && (
           <button
@@ -442,7 +447,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
               >
                 <ChevronLeft size={13} strokeWidth={2.5} />
               </button>
-              
+
               <div className="flex items-center gap-0.5">
                 {REACTION_PAGES[page].map(item => (
                   <div
@@ -484,7 +489,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile }) {
           </div>
         )}
       </div>
-      
+
     </div>
   );
 }
