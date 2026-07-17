@@ -1,9 +1,27 @@
 import clsx from 'clsx';
 import { FileCard } from './FileCard';
 
-export function MessageBubble({ message, isMe, tick }) {
+export function MessageBubble({ message, isMe, tick, onViewFile }) {
   if (message.type === 'file') {
-    return <FileCard file={message.file} isMe={isMe} />;
+    const isImage = message.file?.type?.startsWith('image/');
+    if (isImage && message.file?.url) {
+      return (
+        <div 
+          onClick={() => onViewFile && onViewFile(message.file)}
+          className={clsx(
+            'mt-1 cursor-pointer overflow-hidden rounded-xl animate-slide-up hover:opacity-90 transition-opacity border',
+            isMe ? 'border-[#4338ca] shadow-sm' : 'border-[#e2e8f0] shadow-sm'
+          )}
+        >
+          <img 
+            src={message.file.url} 
+            alt={message.file.name} 
+            className="max-w-[280px] max-h-[280px] object-cover block"
+          />
+        </div>
+      );
+    }
+    return <FileCard file={message.file} isMe={isMe} onViewFile={onViewFile} />;
   }
 
   return (

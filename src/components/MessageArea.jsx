@@ -37,7 +37,7 @@ function groupMessages(messages) {
   return groups;
 }
 
-export function MessageArea({ messages, contact, currentUser, contacts = [], typingUsers = [] }) {
+export function MessageArea({ messages, contact, currentUser, contacts = [], typingUsers = [], onViewFile }) {
   const endRef = useRef(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
@@ -117,6 +117,7 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
                       message={msg}
                       isMe={isMe}
                       tick={tick}
+                      onViewFile={onViewFile}
                     />
                   );
                 })}

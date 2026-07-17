@@ -154,9 +154,9 @@ export function MessageInput({ onSendMessage, onTyping, onFileUpload, contacts =
   };
 
   const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
-    if (file && onFileUpload) {
-      onFileUpload(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0 && onFileUpload) {
+      files.forEach(file => onFileUpload(file));
     }
     // Clear input so same file can be selected again
     e.target.value = '';
@@ -214,6 +214,7 @@ export function MessageInput({ onSendMessage, onTyping, onFileUpload, contacts =
             <div className="w-px h-4 bg-[#e2e8f0] mx-1" />
             <input 
               type="file" 
+              multiple
               className="hidden" 
               ref={fileInputRef} 
               onChange={handleFileSelect} 

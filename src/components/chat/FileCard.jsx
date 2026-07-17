@@ -9,18 +9,21 @@ const FILE_STYLE = {
   zip:  { bg: '#fffbeb', icon: '#f59e0b', border: '#fde68a', ext: 'ZIP'  },
 };
 
-export function FileCard({ file, isMe }) {
+export function FileCard({ file, isMe, onViewFile }) {
   if (!file) return null;
   const ext = (file.name.split('.').pop() ?? 'doc').toLowerCase();
   const style = FILE_STYLE[ext] ?? FILE_STYLE.doc;
 
   return (
-    <div className={clsx(
-      'flex flex-col gap-2 p-3 mt-1 rounded-xl shadow-sm hover:shadow-md transition-shadow animate-slide-up max-w-[340px]',
-      isMe 
-        ? 'bg-[#4f46e5] border border-[#4338ca]' 
-        : 'bg-white border border-[#e2e8f0]'
-    )}>
+    <div 
+      onClick={() => onViewFile && onViewFile(file)}
+      className={clsx(
+        'flex flex-col gap-2 p-3 mt-1 rounded-xl shadow-sm hover:shadow-md transition-shadow animate-slide-up max-w-[340px] cursor-pointer',
+        isMe 
+          ? 'bg-[#4f46e5] border border-[#4338ca]' 
+          : 'bg-white border border-[#e2e8f0]'
+      )}
+    >
       <div className="flex items-start gap-3">
         <div className={clsx(
           'w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border',
@@ -52,6 +55,7 @@ export function FileCard({ file, isMe }) {
             target="_blank"
             rel="noopener noreferrer"
             download={file.name}
+            onClick={(e) => e.stopPropagation()}
             className={clsx(
               'w-7 h-7 flex items-center justify-center rounded-md transition-all',
               isMe ? 'text-white hover:bg-white/20' : 'text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#0f172a]',
