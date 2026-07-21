@@ -19,7 +19,7 @@ export function StarredPanel() {
         const { data, error } = await supabase
           .from('chat_messages')
           .select('*')
-          .contains('star_by_users', [{ user_id: currentUser.id }])
+          .filter('star_by_users', 'cs', `{"{\\"user_id\\":\\"${currentUser.id}\\"}"}`)
           .eq('is_deleted', false)
           .order('created_at', { ascending: false });
           
