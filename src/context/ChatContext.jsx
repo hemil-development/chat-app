@@ -34,6 +34,7 @@ export function ChatProvider({ children }) {
   const [editingMessage, setEditingMessage] = useState(null);
   const [quoteMessage, setQuoteMessage] = useState(null);
   const [forwardingMessage, setForwardingMessage] = useState(null);
+  const [isFetchingChat, setIsFetchingChat] = useState(true);
 
   const typingTimeoutsRef = useRef({});
   const activeChannelRef  = useRef(null);
@@ -345,6 +346,8 @@ export function ChatProvider({ children }) {
 
   const handleSelect = useCallback((contact) => {
     setActiveTab('chat');
+    setIsFetchingChat(true);
+    setAllMessages([]);
     if (contact) {
       navigate(`/chats/${contact.id}`);
     } else {
@@ -470,6 +473,22 @@ export function ChatProvider({ children }) {
             createdAt: insertedMsg.created_at,
           }];
         });
+
+        // Insert mention notifications
+        const mentionedContacts = contacts.filter(c => !c.isChannel && text.includes(`@${c.name}`));
+        if (mentionedContacts.length > 0) {
+          const notifs = mentionedContacts.map(c => ({
+            recipient_id: c.id,
+            sender_id: companyUserId,
+            action: '@Mentioned You:',
+            preview: text.substring(0, 100),
+            emoji: '@',
+            link_id: roomId
+          }));
+          supabase.from('notifications').insert(notifs).then(({error}) => {
+            if (error) console.error("Error inserting mentions", error);
+          });
+        }
       }
 
       const latestMsg = newMsgText || lastUploadedMsg;
@@ -692,8 +711,12 @@ export function ChatProvider({ children }) {
     let isMounted = true;
 
     async function loadMessages() {
+      // Clear old messages before fetching new ones so we don't show previous chat
+      setAllMessages([]);
+      setIsFetchingChat(true);
+      
       if (!currentContact.roomId) {
-        setAllMessages([]);
+        setIsFetchingChat(false);
         return;
       }
 
@@ -705,6 +728,9 @@ export function ChatProvider({ children }) {
 
       if (error) {
         console.error("Error fetching room messages:", error);
+        if (isMounted) {
+          setIsFetchingChat(false);
+        }
         return;
       }
 
@@ -756,6 +782,7 @@ export function ChatProvider({ children }) {
           };
         });
         setAllMessages(formatted);
+        setIsFetchingChat(false);
       }
 
       markMessagesAsRead(currentContact.roomId);
@@ -1191,33 +1218,39 @@ export function ChatProvider({ children }) {
       .channel('realtime-notifications')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${companyUserId}` },
+        { event: '*', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${companyUserId}` },
         async (payload) => {
-          const newNotif = payload.new;
-          const act = (newNotif.action || '').toLowerCase();
-          if (!act.includes('mention') && !act.includes('react')) return;
+          if (payload.eventType === 'UPDATE') {
+            setNotifications(prev => prev.map(n => n.id === payload.new.id ? { ...n, isRead: payload.new.is_read } : n));
+            return;
+          }
 
-          try {
-            const { data: senderData } = await supabase
-              .from('company_users')
-              .select('*, users(*)')
-              .eq('id', newNotif.sender_id)
-              .single();
+          if (payload.eventType === 'INSERT') {
+            const newNotif = payload.new;
+            const act = (newNotif.action || '').toLowerCase();
+            if (!act.includes('mention') && !act.includes('react')) return;
 
-            const formatted = {
-              id: newNotif.id,
-              name: `${senderData?.users?.first_name || 'Someone'}`,
-              action: newNotif.action,
-              preview: newNotif.preview,
-              time: formatMessageTime(newNotif.created_at),
-              color: getUserColor(newNotif.sender_id),
-              initial: `${senderData?.users?.first_name?.[0] || '?'}${senderData?.users?.last_name?.[0] || ''}`.toUpperCase(),
-              emoji: newNotif.emoji || '🔔',
-              isRead: newNotif.is_read,
-              linkId: newNotif.link_id,
-            };
+            try {
+              const { data: senderData } = await supabase
+                .from('company_users')
+                .select('*, users(*)')
+                .eq('id', newNotif.sender_id)
+                .single();
 
-            setNotifications(prev => [formatted, ...prev]);
+              const formatted = {
+                id: newNotif.id,
+                name: `${senderData?.users?.first_name || 'Someone'}`,
+                action: newNotif.action,
+                preview: newNotif.preview,
+                time: formatMessageTime(newNotif.created_at),
+                color: getUserColor(newNotif.sender_id),
+                initial: `${senderData?.users?.first_name?.[0] || '?'}${senderData?.users?.last_name?.[0] || ''}`.toUpperCase(),
+                emoji: newNotif.emoji || '🔔',
+                isRead: newNotif.is_read,
+                linkId: newNotif.link_id,
+              };
+
+              setNotifications(prev => [formatted, ...prev]);
 
             // Trigger Chrome notification for mentions/reactions
             if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState === 'hidden') {
@@ -1236,6 +1269,7 @@ export function ChatProvider({ children }) {
           } catch (err) {
             console.error("Error formatting real-time notification:", err);
           }
+          }
         }
       )
       .subscribe();
@@ -1247,7 +1281,7 @@ export function ChatProvider({ children }) {
     try {
       const { data: msg, error: fetchErr } = await supabase
         .from('chat_messages')
-        .select('reaction_by_users')
+        .select('reaction_by_users, created_by, room_id, message, type')
         .eq('id', messageId)
         .single();
 
@@ -1289,6 +1323,30 @@ export function ChatProvider({ children }) {
         }
         return m;
       }));
+
+      // Insert notification if reaction was added (and not by the message author)
+      if (existingIdx === -1 && msg.created_by && msg.created_by !== companyUserId) {
+        let msgPreview = msg.message;
+        if (msg.type === 'file') {
+           try {
+             const meta = JSON.parse(msg.message);
+             msgPreview = meta.name || 'a file';
+           } catch(e) { msgPreview = 'a file'; }
+        } else {
+           msgPreview = (msgPreview || '').substring(0, 100);
+        }
+        
+        supabase.from('notifications').insert({
+          recipient_id: msg.created_by,
+          sender_id: companyUserId,
+          action: 'Reacted To Your Message',
+          preview: msgPreview,
+          emoji: emoji,
+          link_id: msg.room_id || currentContact?.roomId
+        }).then(({error}) => {
+          if (error) console.error("Error inserting reaction notification", error);
+        });
+      }
 
     } catch (err) {
       console.error("Error in handleToggleReaction:", err);
@@ -1472,6 +1530,7 @@ export function ChatProvider({ children }) {
     editingMessage, setEditingMessage,
     quoteMessage, setQuoteMessage,
     forwardingMessage, setForwardingMessage,
+    isFetchingChat, setIsFetchingChat,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup, handleToggleReaction,
     handleEditMessage, handleDeleteMessage, handleToggleStar, handleForwardMessage, handleTogglePin
   };

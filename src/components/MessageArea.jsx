@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
-import { Check, CheckCheck, Search, X, ChevronUp, ChevronDown, Pin } from 'lucide-react';
+import { Check, CheckCheck, Search, X, ChevronUp, ChevronDown, Pin, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 import { Virtuoso } from 'react-virtuoso';
 import { Avatar } from './ui/Avatar';
@@ -41,7 +41,7 @@ function groupMessages(messages) {
 
 export function MessageArea({ messages, contact, currentUser, contacts = [], typingUsers = [], onViewFile, isSearchOpen, setIsSearchOpen }) {
   const virtuosoRef = useRef(null);
-  const { handleTogglePin } = useChat();
+  const { handleTogglePin, isFetchingChat } = useChat();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
@@ -94,12 +94,11 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
     }
   };
 
-  const [isMounted, setIsMounted] = useState(false);
+  const prevItemsLengthRef = useRef(0);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsMounted(true), 300);
-    return () => clearTimeout(timer);
-  }, []);
+    prevItemsLengthRef.current = flattenedItems.length;
+  }, [flattenedItems.length]);
 
   // Handle Match Navigation
   useEffect(() => {
@@ -233,7 +232,9 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
             computeItemKey={(index, item) => item.id}
             initialTopMostItemIndex={flattenedItems.length - 1}
             followOutput={(isAtBottom) => {
-              if (!isMounted) return 'auto';
+              // If we went from 0 to N items, it's an initial load, so jump instantly
+              if (prevItemsLengthRef.current === 0) return 'auto';
+              // Otherwise, if we're at the bottom and a new message arrives, scroll smoothly
               return isAtBottom ? 'smooth' : false;
             }}
             alignToBottom={true}
@@ -315,6 +316,10 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
               );
             }}
           />
+        ) : isFetchingChat ? (
+          <div className="flex-1 flex items-center justify-center h-full">
+            <Loader2 className="animate-spin text-[#94a3b8] w-6 h-6" />
+          </div>
         ) : (
           <div className="flex-1 flex items-center justify-center h-full">
             <span className="text-[#94a3b8] text-sm">No messages yet.</span>
