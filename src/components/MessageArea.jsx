@@ -46,6 +46,7 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
   const [searchQuery, setSearchQuery] = useState('');
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
   const [tempHighlightId, setTempHighlightId] = useState(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
   // Flatten for virtualization
   const flattenedItems = useMemo(() => {
@@ -89,7 +90,7 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
     if (groupIndex !== -1 && virtuosoRef.current) {
       virtuosoRef.current.scrollToIndex({
         index: groupIndex,
-        align: 'center',
+        align: 'start',
         behavior: 'smooth'
       });
     }
@@ -133,7 +134,7 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
       if (groupIndex !== -1) {
         virtuosoRef.current.scrollToIndex({
           index: groupIndex,
-          align: 'center',
+          align: 'start',
           behavior: 'smooth'
         });
       }
@@ -148,7 +149,7 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
         const timer = setTimeout(() => {
           virtuosoRef.current.scrollToIndex({
             index: groupIndex,
-            align: 'center',
+            align: 'start',
             behavior: 'auto'
           });
           setTempHighlightId(scrollToMessageId);
@@ -268,10 +269,11 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
       )}
 
       {/* Virtualized Message Area */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 relative">
         {flattenedItems.length > 0 ? (
           <Virtuoso
             ref={virtuosoRef}
+            atBottomStateChange={(bottom) => setIsAtBottom(bottom)}
             data={flattenedItems}
             computeItemKey={(index, item) => item.id}
             initialTopMostItemIndex={flattenedItems.length - 1}
@@ -367,9 +369,25 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
             <Loader2 className="animate-spin text-[#94a3b8] w-6 h-6" />
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center h-full">
-            <span className="text-[#94a3b8] text-sm">No messages yet.</span>
+          <div className="h-full flex items-center justify-center text-slate-400">
+            No messages yet. Send a message to start the conversation!
           </div>
+        )}
+
+        {/* Scroll to Bottom Button */}
+        {!isAtBottom && flattenedItems.length > 0 && (
+          <button
+            onClick={() => {
+              virtuosoRef.current?.scrollToIndex({
+                index: flattenedItems.length - 1,
+                align: 'end',
+                behavior: 'smooth'
+              });
+            }}
+            className="absolute bottom-4 right-4 z-40 p-2 bg-white text-[#64748b] hover:text-[#0f172a] rounded-full shadow-md border border-[#e2e8f0] transition-all hover:bg-slate-50 flex items-center justify-center animate-fade-in"
+          >
+            <ChevronDown size={20} strokeWidth={2.5} />
+          </button>
         )}
       </div>
     </div>

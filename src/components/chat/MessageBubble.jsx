@@ -121,21 +121,66 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
   const [page, setPage] = useState(0);
   const [hoveredReaction, setHoveredReaction] = useState(null);
   const [menuDirection, setMenuDirection] = useState('down'); // 'up' or 'down'
+  const [menuPos, setMenuPos] = useState(null); // { x, y }
 
   // Close context menu and reactions popover when clicking anywhere else or scrolling
   useEffect(() => {
-    if (!showMenu && !showPopover) return;
     const handleOutsideAction = () => {
       setShowMenu(false);
       setShowPopover(false);
     };
-    document.addEventListener('click', handleOutsideAction);
-    window.addEventListener('scroll', handleOutsideAction, true);
+
+    // Always listen to this event to close when another bubble opens
+    document.addEventListener('close-all-menus', handleOutsideAction);
+    
+    if (showMenu || showPopover) {
+      document.addEventListener('click', handleOutsideAction);
+      window.addEventListener('scroll', handleOutsideAction, true);
+    }
+    
     return () => {
+      document.removeEventListener('close-all-menus', handleOutsideAction);
       document.removeEventListener('click', handleOutsideAction);
       window.removeEventListener('scroll', handleOutsideAction, true);
     };
   }, [showMenu, showPopover]);
+
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    document.dispatchEvent(new CustomEvent('close-all-menus'));
+    setShowPopover(false);
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    let x = e.clientX - rect.left;
+    let y = e.clientY - rect.top;
+    
+    // Ensure menu doesn't go off-screen
+    const windowWidth = window.innerWidth;
+    
+    let spaceBelow;
+    const scrollContainer = e.currentTarget.closest('.flex-1');
+    if (scrollContainer) {
+      const scrollRect = scrollContainer.getBoundingClientRect();
+      spaceBelow = scrollRect.bottom - e.clientY;
+    } else {
+      const windowHeight = window.innerHeight;
+      spaceBelow = windowHeight - e.clientY;
+    }
+
+    setMenuDirection(spaceBelow < 220 ? 'up' : 'down');
+    
+    if (spaceBelow < 220) {
+      y -= 220; // approximate menu height
+    }
+    
+    if (e.clientX + 160 > windowWidth) {
+      x -= 150; // shift left by menu width
+    }
+    
+    setMenuPos({ x, y });
+    setShowMenu(true);
+  };
 
   // Time constraint: can edit only within 5 minutes of sending
   const timeDiffMinutes = (new Date() - new Date(message.createdAt)) / 60000;
@@ -174,6 +219,21 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
     hasReacted: reactionsMap[emoji].userIds.includes(companyUserId),
   }));
 
+  const attachmentMetaNode = (
+    <div className={clsx("flex items-center gap-1 mt-0.5 select-none pointer-events-none px-1", isMe ? "self-end" : "self-start")}>
+      <span className="text-[9px] tabular-nums font-semibold flex items-center gap-0.5 text-slate-400">
+        {message.timestamp}
+        {message.isStarred && (
+          <Star size={9} className="text-amber-400 fill-amber-400 shrink-0 ml-0.5" />
+        )}
+        {message.isPinned && (
+          <Pin size={9} className="text-indigo-500 fill-indigo-500 shrink-0 ml-0.5 rotate-45" />
+        )}
+      </span>
+      {isMe && tick}
+    </div>
+  );
+
   let bubbleContent = null;
   if (message.type === 'file') {
     const isImage = message.file?.type?.startsWith('image/');
@@ -189,12 +249,14 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
           {replyToMessage && (() => {
             const replySender = replyToMessage.senderId === 'me' ? 'You' : contacts.find(c => c.id === replyToMessage.senderId)?.name || 'Someone';
             return (
-              <div 
-                onClick={() => setScrollToMessageId(replyToMessage.id)}
-                className="mb-1 cursor-pointer w-full text-left bg-black/5 rounded-md px-2 py-1.5 border-l-2 border-indigo-400 opacity-90 hover:opacity-100 transition-opacity"
-              >
-                <div className="text-[10px] font-bold text-indigo-700">{replySender}</div>
-                <div className="text-[11px] truncate text-slate-700">{replyToMessage.text || 'Attachment'}</div>
+              <div className="w-full mb-1">
+                <div 
+                  onClick={() => setScrollToMessageId(replyToMessage.id)}
+                  className="cursor-pointer w-full text-left bg-black/5 rounded-md px-2 py-1.5 border-l-2 border-indigo-400 opacity-90 hover:opacity-100 transition-opacity"
+                >
+                  <div className="text-[10px] font-bold text-indigo-700">{replySender}</div>
+                  <div className="text-[11px] line-clamp-4 text-slate-700">{replyToMessage.text || 'Attachment'}</div>
+                </div>
               </div>
             );
           })()}
@@ -213,6 +275,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
               className="max-w-[280px] max-h-[280px] object-cover block"
             />
           </div>
+          {attachmentMetaNode}
           {parsedReactions.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1 pl-1">
               {parsedReactions.map(r => (
@@ -249,17 +312,20 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
           {replyToMessage && (() => {
             const replySender = replyToMessage.senderId === 'me' ? 'You' : contacts.find(c => c.id === replyToMessage.senderId)?.name || 'Someone';
             return (
-              <div 
-                onClick={() => setScrollToMessageId(replyToMessage.id)}
-                className="mb-1 cursor-pointer w-full text-left bg-black/5 rounded-md px-2 py-1.5 border-l-2 border-indigo-400 opacity-90 hover:opacity-100 transition-opacity"
-              >
-                <div className="text-[10px] font-bold text-indigo-700">{replySender}</div>
-                <div className="text-[11px] truncate text-slate-700">{replyToMessage.text || 'Attachment'}</div>
+              <div className="w-0 min-w-full mb-1">
+                <div 
+                  onClick={() => setScrollToMessageId(replyToMessage.id)}
+                  className="cursor-pointer w-full text-left bg-black/5 rounded-md px-2 py-1.5 border-l-2 border-indigo-400 opacity-90 hover:opacity-100 transition-opacity"
+                >
+                  <div className="text-[10px] font-bold text-indigo-700">{replySender}</div>
+                  <div className="text-[11px] truncate text-slate-700">{replyToMessage.text || 'Attachment'}</div>
+                </div>
               </div>
             );
           })()}
-          <div id={`bubble-${message.id}`} className={clsx("flex flex-col items-start gap-1 transition-all rounded-xl", isHighlighted && "ring-2 ring-[#f59e0b] ring-offset-1 ring-offset-white")}>
+          <div id={`bubble-${message.id}`} className={clsx("flex flex-col gap-1 transition-all rounded-xl", isHighlighted && "ring-2 ring-[#f59e0b] ring-offset-1 ring-offset-white")}>
             <FileCard file={message.file} isMe={isMe} onViewFile={onViewFile} />
+            {attachmentMetaNode}
             {parsedReactions.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1 pl-1">
                 {parsedReactions.map(r => (
@@ -289,7 +355,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
   } else {
     bubbleContent = (
       <div id={`bubble-${message.id}`} className={clsx(
-        'relative px-4 pt-2 pb-5 text-[14px] leading-relaxed whitespace-pre-wrap break-words w-fit min-w-[80px] shadow-sm animate-slide-up flex flex-col transition-all',
+        'relative px-4 pt-2 pb-5 text-[14px] leading-relaxed whitespace-pre-wrap break-words w-fit min-w-[120px] max-w-[85vw] md:max-w-[75vw] lg:max-w-[65vw] shadow-sm animate-slide-up flex flex-col transition-all',
         isMe
           ? 'bg-[#4f46e5] text-white rounded-2xl rounded-tr-sm self-end'
           : 'bg-[#f8fafc] border border-[#e2e8f0] text-[#0f172a] rounded-2xl rounded-tl-sm self-start',
@@ -307,15 +373,17 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
         {replyToMessage && (() => {
             const replySender = replyToMessage.senderId === 'me' ? 'You' : contacts.find(c => c.id === replyToMessage.senderId)?.name || 'Someone';
             return (
-              <div 
-                onClick={() => setScrollToMessageId(replyToMessage.id)}
-                className={clsx(
-                  "mb-2 cursor-pointer w-full text-left rounded-md px-3 py-1.5 border-l-2 opacity-90 hover:opacity-100 transition-opacity shadow-sm",
-                  isMe ? "bg-white/10 border-white text-white" : "bg-black/5 border-indigo-500 text-slate-800"
-                )}
-              >
-                <div className={clsx("text-[10px] font-bold", isMe ? "text-white" : "text-indigo-600")}>{replySender}</div>
-                <div className="text-[11px] truncate opacity-90">{replyToMessage.text || 'Attachment'}</div>
+              <div className="w-full mb-2">
+                <div 
+                  onClick={() => setScrollToMessageId(replyToMessage.id)}
+                  className={clsx(
+                    "cursor-pointer w-full text-left rounded-md px-3 py-1.5 border-l-2 opacity-90 hover:opacity-100 transition-opacity shadow-sm",
+                    isMe ? "bg-white/10 border-white text-white" : "bg-black/5 border-indigo-500 text-slate-800"
+                  )}
+                >
+                  <div className={clsx("text-[10px] font-bold", isMe ? "text-white" : "text-indigo-600")}>{replySender}</div>
+                  <div className="text-[11px] line-clamp-4 opacity-90">{replyToMessage.text || 'Attachment'}</div>
+                </div>
               </div>
             );
         })()}
@@ -363,13 +431,106 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
       </div>
     );
   }
+  const dropdownMenuNode = showMenu ? (
+    <div 
+      style={menuPos ? { left: menuPos.x, top: menuPos.y } : {}}
+      className={clsx(
+      "absolute z-[100] bg-white border border-[#e2e8f0] rounded-md shadow-lg py-1 w-[150px] animate-scale-in",
+      menuPos ? "" : clsx("right-0", menuDirection === 'up' ? "bottom-full mb-1" : "top-full mt-1")
+    )}>
+      {canEdit && (
+        <button
+          onClick={() => {
+            setEditingMessage(message);
+            setShowMenu(false);
+          }}
+          className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
+        >
+          <Pencil size={12} className="text-slate-400" />
+          Edit
+        </button>
+      )}
+
+      <button
+        onClick={() => {
+          const replySender = isMe ? 'You' : contacts.find(c => c.id === message.senderId)?.name || 'Someone';
+          setQuoteMessage({ ...message, senderName: replySender });
+          setShowMenu(false);
+        }}
+        className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
+      >
+        <Reply size={12} className="text-slate-400" />
+        Reply
+      </button>
+
+      <button
+        onClick={() => {
+          setForwardingMessage(message);
+          setShowMenu(false);
+        }}
+        className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
+      >
+        <Share2 size={12} className="text-slate-400" />
+        Forward
+      </button>
+
+      <button
+        onClick={() => {
+          navigator.clipboard.writeText(message.text || '');
+          setChatAlert({ type: 'success', message: 'Message copied to clipboard' });
+          setShowMenu(false);
+        }}
+        className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
+      >
+        <Copy size={12} className="text-slate-400" />
+        Copy
+      </button>
+
+      <button
+        onClick={() => {
+          handleToggleStar(message.id);
+          setShowMenu(false);
+        }}
+        className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
+      >
+        <Star size={12} className={clsx(message.isStarred ? "text-amber-500 fill-amber-500" : "text-slate-400")} />
+        {message.isStarred ? 'Unstar Message' : 'Star Message'}
+      </button>
+
+      <button
+        onClick={() => {
+          handleTogglePin(message.id);
+          setShowMenu(false);
+        }}
+        className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
+      >
+        <Pin size={12} className={clsx(message.isPinned ? "text-indigo-500 fill-indigo-500 rotate-45" : "text-slate-400 rotate-45")} />
+        {message.isPinned ? 'Unpin Message' : 'Pin Message'}
+      </button>
+
+      {isMe && (
+        <button
+          onClick={() => {
+            handleDeleteMessage(message.id);
+            setShowMenu(false);
+          }}
+          className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#ef4444] hover:bg-red-50/50 transition-colors font-semibold border-t border-slate-100 mt-0.5"
+        >
+          <Trash2 size={12} className="text-[#ef4444]" />
+          Delete
+        </button>
+      )}
+    </div>
+  ) : null;
 
   return (
-    <div className={clsx(
-      "relative flex items-center gap-2 group/bubble max-w-full transition-all", 
-      isMe ? "flex-row-reverse self-end" : "flex-row self-start",
-      (showMenu || showPopover) ? "z-[60]" : "z-10"
-    )}>
+    <div 
+      onContextMenu={handleContextMenu}
+      className={clsx(
+        "relative flex items-center gap-2 group/bubble max-w-full transition-all", 
+        isMe ? "flex-row-reverse self-end" : "flex-row self-start",
+        (showMenu || showPopover) ? "z-[60]" : "z-10"
+      )}>
 
       {bubbleContent}
 
@@ -385,14 +546,17 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                const wasOpen = showPopover;
+                document.dispatchEvent(new CustomEvent('close-all-menus'));
+                
                 setShowMenu(false);
-                if (!showPopover) {
+                if (!wasOpen) {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const windowHeight = window.innerHeight;
                   const spaceBelow = windowHeight - rect.bottom;
                   setMenuDirection(spaceBelow < 220 ? 'up' : 'down');
                 }
-                setShowPopover(v => !v);
+                setShowPopover(!wasOpen);
               }}
               className={clsx(
                 "w-6 h-6 rounded-full flex items-center justify-center transition-colors shadow-sm border bg-white",
@@ -489,14 +653,28 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
           <button
             onClick={(e) => {
               e.stopPropagation();
+              const wasOpen = showMenu;
+              document.dispatchEvent(new CustomEvent('close-all-menus'));
+              
+              setMenuPos(null);
               setShowPopover(false);
-              if (!showMenu) {
+              
+              if (!wasOpen) {
                 const rect = e.currentTarget.getBoundingClientRect();
-                const windowHeight = window.innerHeight;
-                const spaceBelow = windowHeight - rect.bottom;
+                const scrollContainer = e.currentTarget.closest('.flex-1');
+                
+                let spaceBelow;
+                if (scrollContainer) {
+                  const scrollRect = scrollContainer.getBoundingClientRect();
+                  spaceBelow = scrollRect.bottom - rect.bottom;
+                } else {
+                  const windowHeight = window.innerHeight;
+                  spaceBelow = windowHeight - rect.bottom;
+                }
+                
                 setMenuDirection(spaceBelow < 220 ? 'up' : 'down');
+                setShowMenu(true);
               }
-              setShowMenu(v => !v);
             }}
             className={clsx(
               "w-6 h-6 rounded-full flex items-center justify-center transition-colors shadow-sm border bg-white",
@@ -507,104 +685,15 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
           >
             <MoreVertical size={13} strokeWidth={2.5} />
           </button>
-
-          {/* Actions Dropdown Menu */}
-          {showMenu && (
-            <div className={clsx(
-              "absolute z-50 bg-white border border-[#e2e8f0] rounded-md shadow-lg py-1 w-[150px] animate-scale-in right-0",
-              menuDirection === 'up' ? "bottom-full mb-1" : "top-full mt-1"
-            )}>
-              {canEdit && (
-                <button
-                  onClick={() => {
-                    setEditingMessage(message);
-                    setShowMenu(false);
-                  }}
-                  className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
-                >
-                  <Pencil size={12} className="text-slate-400" />
-                  Edit
-                </button>
-              )}
-
-              <button
-                onClick={() => {
-                  const replySender = isMe ? 'You' : contacts.find(c => c.id === message.senderId)?.name || 'Someone';
-                  setQuoteMessage({ ...message, senderName: replySender });
-                  setShowMenu(false);
-                }}
-                className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
-              >
-                <Reply size={12} className="text-slate-400" />
-                Reply
-              </button>
-
-
-              <button
-                onClick={() => {
-                  setForwardingMessage(message);
-                  setShowMenu(false);
-                }}
-                className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
-              >
-                <Share2 size={12} className="text-slate-400" />
-                Forward
-              </button>
-
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(message.text || '');
-                  setChatAlert({ type: 'success', message: 'Message copied to clipboard' });
-                  setShowMenu(false);
-                }}
-                className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
-              >
-                <Copy size={12} className="text-slate-400" />
-                Copy
-              </button>
-
-              <button
-                onClick={() => {
-                  handleToggleStar(message.id);
-                  setShowMenu(false);
-                }}
-                className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
-              >
-                <Star size={12} className={clsx(message.isStarred ? "text-amber-500 fill-amber-500" : "text-slate-400")} />
-                {message.isStarred ? 'Unstar Message' : 'Star Message'}
-              </button>
-
-              <button
-                onClick={() => {
-                  handleTogglePin(message.id);
-                  setShowMenu(false);
-                }}
-                className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
-              >
-                <Pin size={12} className={clsx(message.isPinned ? "text-indigo-500 fill-indigo-500 rotate-45" : "text-slate-400 rotate-45")} />
-                {message.isPinned ? 'Unpin Message' : 'Pin Message'}
-              </button>
-
-
-
-              {isMe && (
-                <button
-                  onClick={() => {
-                    handleDeleteMessage(message.id);
-                    setShowMenu(false);
-                  }}
-                  className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#ef4444] hover:bg-red-50/50 transition-colors font-semibold border-t border-slate-100 mt-0.5"
-                >
-                  <Trash2 size={12} className="text-[#ef4444]" />
-                  Delete
-                </button>
-              )}
-            </div>
-          )}
+          
+          {/* Default left-click Dropdown */}
+          {!menuPos && dropdownMenuNode}
         </div>
 
       </div>
 
+      {/* Right-click Context Dropdown */}
+      {menuPos && dropdownMenuNode}
     </div>
   );
 }

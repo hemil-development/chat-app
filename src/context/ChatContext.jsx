@@ -37,6 +37,13 @@ export function ChatProvider({ children }) {
   const [isFetchingChat, setIsFetchingChat] = useState(true);
   const [scrollToMessageId, setScrollToMessageId] = useState(null);
 
+  // Clear temporary message states when switching chats
+  useEffect(() => {
+    setQuoteMessage(null);
+    setEditingMessage(null);
+    setForwardingMessage(null);
+  }, [activeContactId]);
+
   const markNotificationAsRead = useCallback(async (notifId) => {
     setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, isRead: true } : n));
     try {
