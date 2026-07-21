@@ -748,6 +748,7 @@ export function ChatProvider({ children }) {
             reactions: m.reaction_by_users || [],
             isEdited: m.is_edited,
             isDeleted: m.is_deleted,
+            isPinned: m.is_pinned || false,
             isStarred: (m.star_by_users || []).some(s => {
               const parsed = typeof s === 'string' ? JSON.parse(s) : s;
               return parsed?.user_id === companyUserId;
@@ -816,6 +817,7 @@ export function ChatProvider({ children }) {
                     reactions: m.reaction_by_users || [],
                     isEdited: m.is_edited,
                     isDeleted: m.is_deleted,
+                    isPinned: m.is_pinned || false,
                     isStarred: (m.star_by_users || []).some(s => {
                       const parsed = typeof s === 'string' ? JSON.parse(s) : s;
                       return parsed?.user_id === companyUserId;
@@ -872,6 +874,7 @@ export function ChatProvider({ children }) {
                     reactions: m.reaction_by_users || [],
                     isEdited: m.is_edited,
                     isDeleted: m.is_deleted,
+                    isPinned: m.is_pinned || false,
                     isStarred: (m.star_by_users || []).some(s => {
                       const parsed = typeof s === 'string' ? JSON.parse(s) : s;
                       return parsed?.user_id === companyUserId;
@@ -1316,14 +1319,18 @@ export function ChatProvider({ children }) {
     try {
       const { error } = await supabase
         .from('chat_messages')
-        .update({ is_deleted: true, deleted_at: new Date().toISOString() })
+        .update({ 
+          is_deleted: true, 
+          deleted_at: new Date().toISOString(),
+          is_pinned: false
+        })
         .eq('id', messageId);
 
       if (error) throw error;
 
       setAllMessages(prev => prev.map(m => {
         if (m.id === messageId) {
-          return { ...m, isDeleted: true };
+          return { ...m, isDeleted: true, isPinned: false };
         }
         return m;
       }));
@@ -1381,6 +1388,52 @@ export function ChatProvider({ children }) {
     }
   };
 
+  const handleTogglePin = async (messageId) => {
+    try {
+      const currentRoomId = currentContact?.roomId;
+      if (!currentRoomId) return;
+
+      const msgToToggle = allMessages.find(m => m.id === messageId);
+      if (!msgToToggle) return;
+
+      const isCurrentlyPinned = msgToToggle.isPinned;
+      const originalMessages = [...allMessages];
+
+      // Optimistic update
+      setAllMessages(prev => prev.map(m => {
+        if (m.id === messageId) {
+          return { ...m, isPinned: !isCurrentlyPinned };
+        } else if (m.isPinned) {
+          return { ...m, isPinned: false };
+        }
+        return m;
+      }));
+
+      // Call RPC function atomically
+      const { error } = await supabase.rpc('toggle_pinned_message', {
+        p_room_id: currentRoomId,
+        p_message_id: messageId
+      });
+
+      if (error) {
+        // Rollback on error
+        setAllMessages(originalMessages);
+        throw error;
+      }
+
+      setChatAlert({
+        type: 'success',
+        message: isCurrentlyPinned ? 'Message unpinned' : 'Message pinned'
+      });
+    } catch (err) {
+      console.error("Error toggling pin:", err);
+      setChatAlert({
+        type: 'error',
+        message: 'Failed to update pin status'
+      });
+    }
+  };
+
   const handleCreateGroup = async (name, participantIds) => {
     try {
       const { data: newRoom, error } = await supabase
@@ -1420,7 +1473,7 @@ export function ChatProvider({ children }) {
     quoteMessage, setQuoteMessage,
     forwardingMessage, setForwardingMessage,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup, handleToggleReaction,
-    handleEditMessage, handleDeleteMessage, handleToggleStar, handleForwardMessage
+    handleEditMessage, handleDeleteMessage, handleToggleStar, handleForwardMessage, handleTogglePin
   };
 
   return (

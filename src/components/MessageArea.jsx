@@ -1,10 +1,11 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
-import { Check, CheckCheck, Search, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { Check, CheckCheck, Search, X, ChevronUp, ChevronDown, Pin } from 'lucide-react';
 import clsx from 'clsx';
 import { Virtuoso } from 'react-virtuoso';
 import { Avatar } from './ui/Avatar';
 import { DateDivider } from './chat/DateDivider';
 import { MessageBubble } from './chat/MessageBubble';
+import { useChat } from '../context/ChatContext';
 
 function getDateLabel(isoString) {
   if (!isoString) return 'Today';
@@ -40,13 +41,15 @@ function groupMessages(messages) {
 
 export function MessageArea({ messages, contact, currentUser, contacts = [], typingUsers = [], onViewFile, isSearchOpen, setIsSearchOpen }) {
   const virtuosoRef = useRef(null);
+  const { handleTogglePin } = useChat();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
 
   // Flatten for virtualization
   const flattenedItems = useMemo(() => {
-    const groups = groupMessages(messages);
+    const activeMessages = messages.filter(m => !m.isDeleted);
+    const groups = groupMessages(activeMessages);
     const items = [];
     let lastDateLabel = null;
 
@@ -69,11 +72,27 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase();
     return messages.filter(m => {
+      if (m.isDeleted) return false;
       if (m.type === 'text' && m.text?.toLowerCase().includes(query)) return true;
       if (m.type === 'file' && m.file?.name?.toLowerCase().includes(query)) return true;
       return false;
     });
   }, [messages, searchQuery]);
+
+  const pinnedMessage = useMemo(() => {
+    return messages.find(m => m.isPinned && !m.isDeleted);
+  }, [messages]);
+
+  const handleScrollToMessage = (msgId) => {
+    const groupIndex = flattenedItems.findIndex(g => g.items.some(m => m.id === msgId));
+    if (groupIndex !== -1) {
+      virtuosoRef.current.scrollToIndex({
+        index: groupIndex,
+        align: 'center',
+        behavior: 'smooth'
+      });
+    }
+  };
 
   const [isMounted, setIsMounted] = useState(false);
 
@@ -171,6 +190,36 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
             className="p-1.5 text-[#64748b] hover:bg-[#f1f5f9] rounded-lg transition-colors"
           >
             <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* Pinned Message Banner */}
+      {pinnedMessage && (
+        <div className={clsx(
+          "flex items-center justify-between px-4 md:px-6 py-2 bg-slate-50 border-b border-[#e2e8f0] z-10 animate-slide-down relative shadow-xs",
+          isSearchOpen && "mt-12"
+        )}>
+          <div 
+            onClick={() => handleScrollToMessage(pinnedMessage.id)}
+            className="flex-1 flex items-center gap-3 cursor-pointer hover:opacity-80 min-w-0"
+          >
+            <Pin size={15} className="text-indigo-600 rotate-45 shrink-0" />
+            <div className="text-[12px] min-w-0">
+              <span className="font-bold text-slate-700">Pinned Message</span>
+              <p className="text-slate-500 truncate mt-0.5 max-w-full">
+                {pinnedMessage.type === 'file' ? `📁 ${pinnedMessage.file?.name || 'File'}` : pinnedMessage.text}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleTogglePin(pinnedMessage.id);
+            }}
+            className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-200/50 transition-colors shrink-0 ml-2"
+          >
+            <X size={15} />
           </button>
         </div>
       )}

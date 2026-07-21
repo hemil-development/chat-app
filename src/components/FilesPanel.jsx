@@ -33,7 +33,7 @@ const formatFileDate = (isoString) => {
 export function FilesPanel() {
   const { allMessages, setViewingFile } = useChat();
 
-  const fileMessages = (allMessages || []).filter(m => m.type === 'file' && m.file);
+  const fileMessages = (allMessages || []).filter(m => m.type === 'file' && m.file && !m.isDeleted);
   
   // Sort files by newest first
   const sortedFiles = [...fileMessages].reverse();

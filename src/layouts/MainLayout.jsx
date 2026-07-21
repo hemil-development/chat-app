@@ -41,7 +41,7 @@ export function MainLayout() {
 
   if (authLoading) {
     return (
-      <div className="flex flex-col-reverse md:flex-row h-[100dvh] w-full overflow-hidden bg-white animate-pulse">
+      <div className="flex flex-col-reverse md:flex-row h-[100dvh] w-full overflow-hidden bg-white">
         {/* Mobile Nav / Sidebar Skeleton */}
         <aside className="flex flex-row md:flex-col items-center justify-between md:justify-start 
                           w-full h-[60px] md:w-[64px] md:h-[100dvh] 
@@ -49,13 +49,13 @@ export function MainLayout() {
                           bg-white border-t md:border-t-0 md:border-r border-[#e2e8f0] flex-shrink-0 z-50">
           
           <div className="hidden md:flex mb-4 flex-shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-slate-200" />
+            <div className="w-10 h-10 rounded-xl shimmer" />
           </div>
           
           <div className="flex flex-row md:flex-col items-center justify-around md:justify-start gap-1 md:gap-1.5 flex-1 md:flex-none w-full md:px-2">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="w-9 h-9 rounded-lg bg-slate-100 md:w-full flex justify-center items-center">
-                <div className="w-5 h-5 rounded-md bg-slate-200" />
+              <div key={i} className="w-9 h-9 rounded-lg bg-slate-50 md:w-full flex justify-center items-center">
+                <div className="w-5 h-5 rounded-md shimmer" />
               </div>
             ))}
           </div>
@@ -65,21 +65,21 @@ export function MainLayout() {
           {/* Chat List Skeleton */}
           <div className="hidden md:flex w-full md:w-[280px] lg:w-[320px] flex-shrink-0 h-full bg-[#f8fafc] border-r border-[#e2e8f0] flex-col pt-3 pb-2 px-2">
             <div className="px-2 mb-4">
-              <div className="w-full h-[34px] bg-slate-200 rounded-md" />
+              <div className="w-full h-[34px] shimmer rounded-md" />
             </div>
             <div className="px-2 mb-3">
-              <div className="w-full h-7 bg-slate-200 rounded-md" />
+              <div className="w-full h-7 shimmer rounded-md" />
             </div>
             <div className="flex-1 overflow-hidden space-y-0.5">
               {[1, 2, 3, 4, 5, 6, 7].map((i) => (
                 <div key={i} className="flex items-center gap-2.5 px-2 py-[7px] mx-1.5">
-                  <div className="w-8 h-8 rounded-full bg-slate-200 shrink-0" />
+                  <div className="w-8 h-8 rounded-full shimmer shrink-0" />
                   <div className="flex-1 min-w-0 ml-1 flex flex-col gap-1.5">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="w-24 h-3.5 bg-slate-200 rounded-sm" />
-                      <div className="w-8 h-2.5 bg-slate-200 rounded-sm" />
+                      <div className="w-24 h-3.5 shimmer rounded-sm" />
+                      <div className="w-8 h-2.5 shimmer rounded-sm" />
                     </div>
-                    <div className="w-3/4 h-3 bg-slate-200 rounded-sm" />
+                    <div className="w-3/4 h-3 shimmer rounded-sm" />
                   </div>
                 </div>
               ))}
@@ -90,37 +90,65 @@ export function MainLayout() {
           <main className="flex-1 min-w-0 w-full h-full bg-white flex flex-col">
             <div className="h-[72px] border-b border-[#e2e8f0] px-6 py-3 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-slate-200 rounded-full" />
+                <div className="w-10 h-10 shimmer rounded-full" />
                 <div className="flex flex-col gap-2">
-                   <div className="w-32 h-4 bg-slate-200 rounded-sm" />
-                   <div className="w-16 h-2.5 bg-slate-200 rounded-sm" />
+                   <div className="w-32 h-4 shimmer rounded-sm" />
+                   <div className="w-16 h-2.5 shimmer rounded-sm" />
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-slate-200 rounded-full" />
-                <div className="w-8 h-8 bg-slate-200 rounded-full" />
+                <div className="w-8 h-8 shimmer rounded-full" />
+                <div className="w-8 h-8 shimmer rounded-full" />
               </div>
             </div>
             
-            <div className="flex-1 p-0 flex flex-col justify-end pb-4">
-              <div className="flex gap-3 px-6 py-2">
-                <div className="w-8 h-8 bg-slate-200 rounded-full shrink-0" />
-                <div className="flex flex-col gap-1 w-full max-w-[70%]">
-                  <div className="w-20 h-3 bg-slate-200 rounded-sm mb-0.5 ml-1" />
-                  <div className="w-48 h-[38px] bg-slate-100 rounded-2xl rounded-tl-sm" />
-                  <div className="w-64 h-[58px] bg-slate-100 rounded-2xl rounded-tl-sm" />
+            <div className="flex-1 p-6 flex flex-col justify-end gap-4 overflow-hidden">
+              {/* Message Group 1 (Incoming) */}
+              <div className="flex gap-3">
+                <div className="w-8 h-8 shimmer rounded-full shrink-0" />
+                <div className="flex flex-col gap-1.5 w-full max-w-[70%]">
+                  <div className="w-24 h-3 shimmer rounded-sm mb-1 ml-1" />
+                  <div className="w-48 h-9 shimmer rounded-2xl rounded-tl-sm" />
+                  <div className="w-72 h-14 shimmer rounded-2xl rounded-tl-sm" />
                 </div>
               </div>
-              <div className="flex gap-3 px-6 py-2 flex-row-reverse">
-                <div className="flex flex-col gap-1 w-full max-w-[70%] items-end">
-                  <div className="w-64 h-[58px] bg-[#eef2ff] rounded-2xl rounded-tr-sm" />
-                  <div className="w-32 h-[38px] bg-[#eef2ff] rounded-2xl rounded-tr-sm" />
+
+              {/* Message Group 2 (Outgoing) */}
+              <div className="flex gap-3 flex-row-reverse">
+                <div className="flex flex-col gap-1.5 w-full max-w-[70%] items-end">
+                  <div className="w-64 h-14 shimmer-indigo rounded-2xl rounded-tr-sm" />
+                  <div className="w-32 h-9 shimmer-indigo rounded-2xl rounded-tr-sm" />
+                </div>
+              </div>
+
+              {/* Message Group 3 (Incoming) */}
+              <div className="flex gap-3">
+                <div className="w-8 h-8 shimmer rounded-full shrink-0" />
+                <div className="flex flex-col gap-1.5 w-full max-w-[70%]">
+                  <div className="w-32 h-3 shimmer rounded-sm mb-1 ml-1" />
+                  <div className="w-56 h-10 shimmer rounded-2xl rounded-tl-sm" />
+                </div>
+              </div>
+
+              {/* Message Group 4 (Outgoing) */}
+              <div className="flex gap-3 flex-row-reverse">
+                <div className="flex flex-col gap-1.5 w-full max-w-[70%] items-end">
+                  <div className="w-48 h-10 shimmer-indigo rounded-2xl rounded-tr-sm" />
+                </div>
+              </div>
+
+              {/* Message Group 5 (Incoming) */}
+              <div className="flex gap-3">
+                <div className="w-8 h-8 shimmer rounded-full shrink-0" />
+                <div className="flex flex-col gap-1.5 w-full max-w-[70%]">
+                  <div className="w-20 h-3 shimmer rounded-sm mb-1 ml-1" />
+                  <div className="w-64 h-24 shimmer rounded-2xl rounded-tl-sm" />
                 </div>
               </div>
             </div>
             
             <div className="p-4 shrink-0">
-              <div className="w-full h-[52px] bg-slate-100 rounded-xl" />
+              <div className="w-full h-[52px] shimmer rounded-xl" />
             </div>
           </main>
         </div>
@@ -182,40 +210,68 @@ export function MainLayout() {
           currentContact ? "flex" : "hidden md:flex"
         )}>
         {loading ? (
-          <div className="flex-1 min-w-0 w-full h-full bg-white flex flex-col animate-pulse">
+          <div className="flex-1 min-w-0 w-full h-full bg-white flex flex-col">
             <div className="h-[72px] border-b border-[#e2e8f0] px-6 py-3 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-slate-200 rounded-full" />
+                <div className="w-10 h-10 shimmer rounded-full" />
                 <div className="flex flex-col gap-2">
-                   <div className="w-32 h-4 bg-slate-200 rounded-sm" />
-                   <div className="w-16 h-2.5 bg-slate-200 rounded-sm" />
+                   <div className="w-32 h-4 shimmer rounded-sm" />
+                   <div className="w-16 h-2.5 shimmer rounded-sm" />
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-slate-200 rounded-full" />
-                <div className="w-8 h-8 bg-slate-200 rounded-full" />
+                <div className="w-8 h-8 shimmer rounded-full" />
+                <div className="w-8 h-8 shimmer rounded-full" />
               </div>
             </div>
             
-            <div className="flex-1 p-0 flex flex-col justify-end pb-4">
-              <div className="flex gap-3 px-6 py-2">
-                <div className="w-8 h-8 bg-slate-200 rounded-full shrink-0" />
-                <div className="flex flex-col gap-1 w-full max-w-[70%]">
-                  <div className="w-20 h-3 bg-slate-200 rounded-sm mb-0.5 ml-1" />
-                  <div className="w-48 h-[38px] bg-slate-100 rounded-2xl rounded-tl-sm" />
-                  <div className="w-64 h-[58px] bg-slate-100 rounded-2xl rounded-tl-sm" />
+            <div className="flex-1 p-6 flex flex-col justify-end gap-4 overflow-hidden">
+              {/* Message Group 1 (Incoming) */}
+              <div className="flex gap-3">
+                <div className="w-8 h-8 shimmer rounded-full shrink-0" />
+                <div className="flex flex-col gap-1.5 w-full max-w-[70%]">
+                  <div className="w-24 h-3 shimmer rounded-sm mb-1 ml-1" />
+                  <div className="w-48 h-9 shimmer rounded-2xl rounded-tl-sm" />
+                  <div className="w-72 h-14 shimmer rounded-2xl rounded-tl-sm" />
                 </div>
               </div>
-              <div className="flex gap-3 px-6 py-2 flex-row-reverse">
-                <div className="flex flex-col gap-1 w-full max-w-[70%] items-end">
-                  <div className="w-64 h-[58px] bg-[#eef2ff] rounded-2xl rounded-tr-sm" />
-                  <div className="w-32 h-[38px] bg-[#eef2ff] rounded-2xl rounded-tr-sm" />
+
+              {/* Message Group 2 (Outgoing) */}
+              <div className="flex gap-3 flex-row-reverse">
+                <div className="flex flex-col gap-1.5 w-full max-w-[70%] items-end">
+                  <div className="w-64 h-14 shimmer-indigo rounded-2xl rounded-tr-sm" />
+                  <div className="w-32 h-9 shimmer-indigo rounded-2xl rounded-tr-sm" />
+                </div>
+              </div>
+
+              {/* Message Group 3 (Incoming) */}
+              <div className="flex gap-3">
+                <div className="w-8 h-8 shimmer rounded-full shrink-0" />
+                <div className="flex flex-col gap-1.5 w-full max-w-[70%]">
+                  <div className="w-32 h-3 shimmer rounded-sm mb-1 ml-1" />
+                  <div className="w-56 h-10 shimmer rounded-2xl rounded-tl-sm" />
+                </div>
+              </div>
+
+              {/* Message Group 4 (Outgoing) */}
+              <div className="flex gap-3 flex-row-reverse">
+                <div className="flex flex-col gap-1.5 w-full max-w-[70%] items-end">
+                  <div className="w-48 h-10 shimmer-indigo rounded-2xl rounded-tr-sm" />
+                </div>
+              </div>
+
+              {/* Message Group 5 (Incoming) */}
+              <div className="flex gap-3">
+                <div className="w-8 h-8 shimmer rounded-full shrink-0" />
+                <div className="flex flex-col gap-1.5 w-full max-w-[70%]">
+                  <div className="w-20 h-3 shimmer rounded-sm mb-1 ml-1" />
+                  <div className="w-64 h-24 shimmer rounded-2xl rounded-tl-sm" />
                 </div>
               </div>
             </div>
             
             <div className="p-4 shrink-0">
-              <div className="w-full h-[52px] bg-slate-100 rounded-xl" />
+              <div className="w-full h-[52px] shimmer rounded-xl" />
             </div>
           </div>
         ) : currentContact ? (

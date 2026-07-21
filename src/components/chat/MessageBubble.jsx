@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { FileCard } from './FileCard';
-import { Smile, ChevronLeft, ChevronRight, MoreVertical, Pencil, Quote, Share2, Copy, Star, Trash2, CornerUpRight } from 'lucide-react';
+import { Smile, ChevronLeft, ChevronRight, MoreVertical, Pencil, Quote, Share2, Copy, Star, Trash2, CornerUpRight, Pin } from 'lucide-react';
 import { useChat } from '../../context/ChatContext';
+import { Emoji } from 'emoji-picker-react';
 
 const REACTION_PAGES = [
   [
@@ -22,6 +23,37 @@ const REACTION_PAGES = [
     { emoji: '🔥', name: 'Fire' },
   ]
 ];
+
+function getEmojiUnified(emojiChar) {
+  if (!emojiChar) return '';
+  const codePoints = [];
+  for (let i = 0; i < emojiChar.length; i++) {
+    const codePoint = emojiChar.codePointAt(i);
+    codePoints.push(codePoint.toString(16));
+    if (codePoint > 0xffff) {
+      i++;
+    }
+  }
+  return codePoints.join('-');
+}
+
+function renderEmojiHelper(emojiChar, size) {
+  if (emojiChar === '✔️' || emojiChar === '✔') {
+    return (
+      <svg 
+        width={size} 
+        height={size} 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        className="select-none inline-block align-middle"
+      >
+        <circle cx="12" cy="12" r="10" stroke="#007eff" strokeWidth="2.2" fill="#ffffff" />
+        <path d="M7.5 12.5l3 3 6-6" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  return <Emoji unified={getEmojiUnified(emojiChar)} size={size} />;
+}
 
 function renderMessageText(text) {
   if (!text) return '';
@@ -79,7 +111,8 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
     handleDeleteMessage,
     setChatAlert,
     contacts,
-    setForwardingMessage
+    setForwardingMessage,
+    handleTogglePin
   } = useChat();
 
   const [showPopover, setShowPopover] = useState(false);
@@ -182,7 +215,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
                       : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
                   )}
                 >
-                  <span>{r.emoji}</span>
+                  {renderEmojiHelper(r.emoji, 13)}
                   {r.count > 1 && <span>{r.count}</span>}
                 </button>
               ))}
@@ -217,7 +250,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
                         : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
                     )}
                   >
-                    <span>{r.emoji}</span>
+                    {renderEmojiHelper(r.emoji, 13)}
                     {r.count > 1 && <span>{r.count}</span>}
                   </button>
                 ))}
@@ -259,13 +292,15 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
                 className={clsx(
                   "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-all border shadow-xs select-none",
                   r.hasReacted
-                    ? "bg-indigo-50/20 border-indigo-300/30 text-white"
+                    ? isMe
+                      ? "bg-white/20 border-white/20 text-white"
+                      : "bg-indigo-50 border-indigo-200 text-indigo-600"
                     : isMe
-                      ? "bg-white/10 border-white/10 text-white/90 hover:bg-white/20"
+                      ? "bg-white/10 border-white/10 text-white/95 hover:bg-white/20"
                       : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
                 )}
               >
-                <span>{r.emoji}</span>
+                {renderEmojiHelper(r.emoji, 13)}
                 {r.count > 1 && <span>{r.count}</span>}
               </button>
             ))}
@@ -277,6 +312,9 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
             {message.timestamp}
             {message.isStarred && (
               <Star size={9} className="text-amber-400 fill-amber-400 shrink-0 ml-0.5" />
+            )}
+            {message.isPinned && (
+              <Pin size={9} className={clsx("shrink-0 ml-0.5 rotate-45", isMe ? "text-indigo-200 fill-indigo-200" : "text-indigo-500 fill-indigo-500")} />
             )}
           </span>
           {isMe && tick}
@@ -296,29 +334,109 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
         (showMenu || showPopover) ? "opacity-100" : "opacity-0 group-hover/bubble:opacity-100"
       )}>
 
-        {/* Smile Button */}
+        {/* Smile Button and Popover */}
         {!isMe && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowMenu(false);
-              if (!showPopover) {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const windowHeight = window.innerHeight;
-                const spaceBelow = windowHeight - rect.bottom;
-                setMenuDirection(spaceBelow < 220 ? 'up' : 'down');
-              }
-              setShowPopover(v => !v);
-            }}
-            className={clsx(
-              "w-6 h-6 rounded-full flex items-center justify-center transition-colors shadow-sm border bg-white",
-              showPopover
-                ? "border-indigo-200 text-[#007eff] hover:bg-indigo-50"
-                : "border-[#e2e8f0] text-[#64748b] hover:text-[#007eff] hover:bg-[#f8fafc]"
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMenu(false);
+                if (!showPopover) {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const windowHeight = window.innerHeight;
+                  const spaceBelow = windowHeight - rect.bottom;
+                  setMenuDirection(spaceBelow < 220 ? 'up' : 'down');
+                }
+                setShowPopover(v => !v);
+              }}
+              className={clsx(
+                "w-6 h-6 rounded-full flex items-center justify-center transition-colors shadow-sm border bg-white",
+                showPopover
+                  ? "border-indigo-200 text-[#007eff] hover:bg-indigo-50"
+                  : "border-[#e2e8f0] text-[#64748b] hover:text-[#007eff] hover:bg-[#f8fafc]"
+              )}
+            >
+              <Smile size={13} strokeWidth={2.5} />
+            </button>
+
+            {/* Smiley Popover React Emojis */}
+            {showPopover && (
+              <div className={clsx(
+                "absolute left-1/2 -translate-x-1/2 z-50 bg-white border border-[#e2e8f0] rounded-xl shadow-lg p-1.5 flex flex-col items-center gap-1.5 animate-scale-in max-w-[280px]",
+                menuDirection === 'up' ? "bottom-full mb-2.5" : "top-full mt-2.5"
+              )}>
+                {/* Arrow pointing to the Smile button */}
+                <div className={clsx(
+                  "absolute left-1/2 -translate-x-1/2 w-2 h-2 bg-white border-[#e2e8f0] rotate-45 z-10",
+                  menuDirection === 'up' 
+                    ? "bottom-0 translate-y-1/2 border-r border-b" 
+                    : "top-0 -translate-y-1/2 border-l border-t"
+                )} />
+
+                <div className="flex items-center gap-1 relative z-20">
+                  <button
+                    disabled={page === 0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPage(p => Math.max(0, p - 1));
+                    }}
+                    className={clsx(
+                      "p-1 rounded-lg transition-all",
+                      page === 0
+                        ? "text-slate-300 cursor-not-allowed opacity-50"
+                        : "hover:bg-[#f1f5f9] text-[#64748b] hover:text-[#475569]"
+                    )}
+                  >
+                    <ChevronLeft size={13} strokeWidth={2.5} />
+                  </button>
+
+                  <div className="flex items-center gap-0.5">
+                    {REACTION_PAGES[page].map(item => (
+                      <div
+                        key={item.emoji}
+                        className="relative flex flex-col items-center"
+                        onMouseEnter={() => setHoveredReaction(item.name)}
+                        onMouseLeave={() => setHoveredReaction(null)}
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleReaction(message.id, item.emoji);
+                            setShowPopover(false);
+                          }}
+                          className="w-7 h-7 flex items-center justify-center hover:scale-125 transition-transform"
+                        >
+                          {renderEmojiHelper(item.emoji, 20)}
+                        </button>
+
+                        {hoveredReaction === item.name && (
+                          <div className="absolute top-full mt-2 z-[60] bg-[#1e293b] text-white text-[9px] font-semibold px-2 py-1 rounded shadow-md leading-none animate-fade-in whitespace-nowrap pointer-events-none">
+                            {item.name}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    disabled={page === REACTION_PAGES.length - 1}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPage(p => Math.min(REACTION_PAGES.length - 1, p + 1));
+                    }}
+                    className={clsx(
+                      "p-1 rounded-lg transition-all",
+                      page === REACTION_PAGES.length - 1
+                        ? "text-slate-300 cursor-not-allowed opacity-50"
+                        : "hover:bg-[#f1f5f9] text-[#64748b] hover:text-[#475569]"
+                    )}
+                  >
+                    <ChevronRight size={13} strokeWidth={2.5} />
+                  </button>
+                </div>
+              </div>
             )}
-          >
-            <Smile size={13} strokeWidth={2.5} />
-          </button>
+          </div>
         )}
 
         {/* Action Trigger Menu Button */}
@@ -411,6 +529,17 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
                 {message.isStarred ? 'Unstar Message' : 'Star Message'}
               </button>
 
+              <button
+                onClick={() => {
+                  handleTogglePin(message.id);
+                  setShowMenu(false);
+                }}
+                className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
+              >
+                <Pin size={12} className={clsx(message.isPinned ? "text-indigo-500 fill-indigo-500 rotate-45" : "text-slate-400 rotate-45")} />
+                {message.isPinned ? 'Unpin Message' : 'Pin Message'}
+              </button>
+
 
 
               {isMe && (
@@ -429,65 +558,6 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
           )}
         </div>
 
-        {/* Smiley Popover React Emojis */}
-        {showPopover && (
-          <div className={clsx(
-            "absolute left-1/2 -translate-x-1/2 z-50 bg-white border border-[#e2e8f0] rounded-xl shadow-lg p-1.5 flex flex-col items-center gap-1.5 animate-scale-in max-w-[280px] before:content-[''] before:absolute before:left-1/2 before:-translate-x-1/2 before:border-4 before:border-transparent",
-            menuDirection === 'up'
-              ? "bottom-full mb-1.5 before:top-full before:border-t-white"
-              : "top-full mt-1.5 before:bottom-full before:border-b-white"
-          )}>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPage(p => (p === 0 ? REACTION_PAGES.length - 1 : p - 1));
-                }}
-                className="p-1 hover:bg-[#f1f5f9] rounded-lg text-[#64748b] transition-colors"
-              >
-                <ChevronLeft size={13} strokeWidth={2.5} />
-              </button>
-
-              <div className="flex items-center gap-0.5">
-                {REACTION_PAGES[page].map(item => (
-                  <div
-                    key={item.emoji}
-                    className="relative group"
-                    onMouseEnter={() => setHoveredReaction(item.name)}
-                    onMouseLeave={() => setHoveredReaction(null)}
-                  >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleReaction(message.id, item.emoji);
-                        setShowPopover(false);
-                      }}
-                      className="w-7 h-7 flex items-center justify-center text-base hover:scale-125 transition-transform"
-                    >
-                      {item.emoji}
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPage(p => (p === REACTION_PAGES.length - 1 ? 0 : p + 1));
-                }}
-                className="p-1 hover:bg-[#f1f5f9] rounded-lg text-[#64748b] transition-colors"
-              >
-                <ChevronRight size={13} strokeWidth={2.5} />
-              </button>
-            </div>
-
-            {hoveredReaction && (
-              <div className="bg-[#0f172a] text-white text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-sm leading-none animate-fade-in whitespace-nowrap">
-                {hoveredReaction}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
     </div>
