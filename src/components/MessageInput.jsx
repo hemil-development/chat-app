@@ -57,7 +57,7 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
   const [isEmpty, setIsEmpty]     = useState(true);
   const [pendingFiles, setPendingFiles] = useState([]);
   
-  const { setChatAlert, editingMessage, setEditingMessage, handleEditMessage } = useChat();
+  const { setChatAlert, editingMessage, setEditingMessage, handleEditMessage, quoteMessage, setQuoteMessage } = useChat();
 
   // Prefill contentEditable editor when editing a message
   useEffect(() => {
@@ -398,6 +398,22 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Replying Banner */}
+        {quoteMessage && (
+          <div className="flex items-center justify-between bg-indigo-50/80 px-4 py-2 text-[12px] text-[#475569] border-b border-[#e2e8f0]">
+            <div className="flex flex-col gap-0.5 overflow-hidden">
+              <span className="font-semibold text-indigo-600">Replying to {quoteMessage.senderName || 'Someone'}</span>
+              <span className="truncate max-w-full opacity-80 text-[11px]">{quoteMessage.text || 'Attachment'}</span>
+            </div>
+            <button 
+              onClick={() => setQuoteMessage(null)}
+              className="text-[#64748b] hover:text-[#ef4444] p-1 rounded-md hover:bg-slate-200/50 transition-colors"
+            >
+              <X size={14} />
+            </button>
           </div>
         )}
 

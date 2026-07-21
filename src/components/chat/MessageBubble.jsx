@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { FileCard } from './FileCard';
-import { Smile, ChevronLeft, ChevronRight, MoreVertical, Pencil, Quote, Share2, Copy, Star, Trash2, CornerUpRight, Pin } from 'lucide-react';
+import { Smile, ChevronLeft, ChevronRight, MoreVertical, Pencil, Quote, Share2, Copy, Star, Trash2, CornerUpRight, Pin, Reply } from 'lucide-react';
 import { useChat } from '../../context/ChatContext';
 import { Emoji } from 'emoji-picker-react';
 
@@ -101,18 +101,19 @@ function renderMessageText(text) {
   return <span dangerouslySetInnerHTML={{ __html: escaped }} />;
 }
 
-export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }) {
+export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, replyToMessage }) {
   const {
     companyUserId,
     handleToggleReaction,
     setEditingMessage,
-    setQuoteMessage,
     handleToggleStar,
     handleDeleteMessage,
     setChatAlert,
-    contacts,
     setForwardingMessage,
-    handleTogglePin
+    handleTogglePin,
+    setScrollToMessageId,
+    setQuoteMessage,
+    contacts
   } = useChat();
 
   const [showPopover, setShowPopover] = useState(false);
@@ -185,6 +186,18 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
               <span>Forwarded</span>
             </div>
           )}
+          {replyToMessage && (() => {
+            const replySender = replyToMessage.senderId === 'me' ? 'You' : contacts.find(c => c.id === replyToMessage.senderId)?.name || 'Someone';
+            return (
+              <div 
+                onClick={() => setScrollToMessageId(replyToMessage.id)}
+                className="mb-1 cursor-pointer w-full text-left bg-black/5 rounded-md px-2 py-1.5 border-l-2 border-indigo-400 opacity-90 hover:opacity-100 transition-opacity"
+              >
+                <div className="text-[10px] font-bold text-indigo-700">{replySender}</div>
+                <div className="text-[11px] truncate text-slate-700">{replyToMessage.text || 'Attachment'}</div>
+              </div>
+            );
+          })()}
           <div
             id={`bubble-${message.id}`}
             onClick={() => onViewFile && onViewFile(message.file)}
@@ -233,6 +246,18 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
               <span>Forwarded</span>
             </div>
           )}
+          {replyToMessage && (() => {
+            const replySender = replyToMessage.senderId === 'me' ? 'You' : contacts.find(c => c.id === replyToMessage.senderId)?.name || 'Someone';
+            return (
+              <div 
+                onClick={() => setScrollToMessageId(replyToMessage.id)}
+                className="mb-1 cursor-pointer w-full text-left bg-black/5 rounded-md px-2 py-1.5 border-l-2 border-indigo-400 opacity-90 hover:opacity-100 transition-opacity"
+              >
+                <div className="text-[10px] font-bold text-indigo-700">{replySender}</div>
+                <div className="text-[11px] truncate text-slate-700">{replyToMessage.text || 'Attachment'}</div>
+              </div>
+            );
+          })()}
           <div id={`bubble-${message.id}`} className={clsx("flex flex-col items-start gap-1 transition-all rounded-xl", isHighlighted && "ring-2 ring-[#f59e0b] ring-offset-1 ring-offset-white")}>
             <FileCard file={message.file} isMe={isMe} onViewFile={onViewFile} />
             {parsedReactions.length > 0 && (
@@ -279,6 +304,21 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
             <span>Forwarded</span>
           </div>
         )}
+        {replyToMessage && (() => {
+            const replySender = replyToMessage.senderId === 'me' ? 'You' : contacts.find(c => c.id === replyToMessage.senderId)?.name || 'Someone';
+            return (
+              <div 
+                onClick={() => setScrollToMessageId(replyToMessage.id)}
+                className={clsx(
+                  "mb-2 cursor-pointer w-full text-left rounded-md px-3 py-1.5 border-l-2 opacity-90 hover:opacity-100 transition-opacity shadow-sm",
+                  isMe ? "bg-white/10 border-white text-white" : "bg-black/5 border-indigo-500 text-slate-800"
+                )}
+              >
+                <div className={clsx("text-[10px] font-bold", isMe ? "text-white" : "text-indigo-600")}>{replySender}</div>
+                <div className="text-[11px] truncate opacity-90">{replyToMessage.text || 'Attachment'}</div>
+              </div>
+            );
+        })()}
         <div className="pb-0.5">{renderMessageText(message.text)}</div>
 
         {parsedReactions.length > 0 && (
@@ -487,18 +527,18 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
                 </button>
               )}
 
-              {message.type !== 'file' && (
-                <button
-                  onClick={() => {
-                    setQuoteMessage(message);
-                    setShowMenu(false);
-                  }}
-                  className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
-                >
-                  <Quote size={12} className="text-slate-400" />
-                  Quote
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  const replySender = isMe ? 'You' : contacts.find(c => c.id === message.senderId)?.name || 'Someone';
+                  setQuoteMessage({ ...message, senderName: replySender });
+                  setShowMenu(false);
+                }}
+                className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
+              >
+                <Reply size={12} className="text-slate-400" />
+                Reply
+              </button>
+
 
               <button
                 onClick={() => {
