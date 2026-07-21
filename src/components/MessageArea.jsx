@@ -41,10 +41,11 @@ function groupMessages(messages) {
 
 export function MessageArea({ messages, contact, currentUser, contacts = [], typingUsers = [], onViewFile, isSearchOpen, setIsSearchOpen }) {
   const virtuosoRef = useRef(null);
-  const { handleTogglePin, isFetchingChat } = useChat();
+  const { handleTogglePin, isFetchingChat, scrollToMessageId, setScrollToMessageId } = useChat();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+  const [tempHighlightId, setTempHighlightId] = useState(null);
 
   // Flatten for virtualization
   const flattenedItems = useMemo(() => {
@@ -122,6 +123,33 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
       }
     }
   }, [activeMatchIndex, matches, flattenedItems]);
+
+  // Handle Scroll to Specific Message (e.g. from Starred Sidebar)
+  useEffect(() => {
+    if (scrollToMessageId && !isFetchingChat && virtuosoRef.current && flattenedItems.length > 0) {
+      const groupIndex = flattenedItems.findIndex(g => g.items.some(m => m.id === scrollToMessageId));
+      if (groupIndex !== -1) {
+        const timer = setTimeout(() => {
+          virtuosoRef.current.scrollToIndex({
+            index: groupIndex,
+            align: 'center',
+            behavior: 'auto'
+          });
+          setTempHighlightId(scrollToMessageId);
+          setScrollToMessageId(null);
+          
+          // Clear highlight after 2.5 seconds
+          const highlightTimer = setTimeout(() => {
+            setTempHighlightId(null);
+          }, 2500);
+          return () => clearTimeout(highlightTimer);
+        }, 150);
+        return () => clearTimeout(timer);
+      } else {
+        setScrollToMessageId(null);
+      }
+    }
+  }, [scrollToMessageId, isFetchingChat, flattenedItems, setScrollToMessageId]);
 
   const handleNextMatch = () => {
     setActiveMatchIndex(prev => (prev < matches.length - 1 ? prev + 1 : 0));
@@ -296,7 +324,7 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
                           <Check size={13} className="text-indigo-200/80" />
                         );
 
-                        const isHighlighted = matches.length > 0 && matches[activeMatchIndex]?.id === msg.id;
+                        const isHighlighted = (matches.length > 0 && matches[activeMatchIndex]?.id === msg.id) || tempHighlightId === msg.id;
 
                         return (
                           <div key={msg.id} id={`msg-${msg.id}`}>

@@ -35,6 +35,7 @@ export function ChatProvider({ children }) {
   const [quoteMessage, setQuoteMessage] = useState(null);
   const [forwardingMessage, setForwardingMessage] = useState(null);
   const [isFetchingChat, setIsFetchingChat] = useState(true);
+  const [scrollToMessageId, setScrollToMessageId] = useState(null);
 
   const typingTimeoutsRef = useRef({});
   const activeChannelRef  = useRef(null);
@@ -1515,6 +1516,7 @@ export function ChatProvider({ children }) {
   };
 
   const value = {
+    companyUserId,
     activeNav, setActiveNav,
     contacts, setContacts,
     activeContact, setActiveContact,
@@ -1531,6 +1533,7 @@ export function ChatProvider({ children }) {
     quoteMessage, setQuoteMessage,
     forwardingMessage, setForwardingMessage,
     isFetchingChat, setIsFetchingChat,
+    scrollToMessageId, setScrollToMessageId,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup, handleToggleReaction,
     handleEditMessage, handleDeleteMessage, handleToggleStar, handleForwardMessage, handleTogglePin
   };

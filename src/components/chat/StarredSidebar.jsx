@@ -6,7 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { formatMessageTime, getUserColor } from '../../utils/helpers';
 
 export function StarredSidebar() {
-  const { companyUserId } = useChat();
+  const { companyUserId, contacts, handleSelect, setScrollToMessageId } = useChat();
   const [starred, setStarred] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -18,7 +18,8 @@ export function StarredSidebar() {
         const { data, error } = await supabase
           .from('chat_messages')
           .select('*, company_users!chat_messages_created_by_fkey(users(first_name, last_name))')
-          .filter('star_by_users', 'cs', `[{"user_id":"${companyUserId}"}]`)
+          .filter('star_by_users', 'cs', `{"{\\"user_id\\":\\"${companyUserId}\\"}"}`)
+          .eq('is_deleted', false)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -35,6 +36,7 @@ export function StarredSidebar() {
           const lname = m.company_users?.users?.last_name || '';
           return {
             id: m.id,
+            roomId: m.room_id,
             name: `${fname} ${lname}`.trim(),
             preview: preview,
             date: formatMessageTime(m.created_at),
@@ -91,7 +93,17 @@ export function StarredSidebar() {
           </div>
         ) : starred.length > 0 ? (
           starred.map(item => (
-            <div key={item.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#f1f5f9] cursor-pointer transition-colors group">
+            <div
+              key={item.id}
+              onClick={() => {
+                const target = contacts.find(c => c.roomId === item.roomId || c.id === item.roomId);
+                if (target) {
+                  setScrollToMessageId(item.id);
+                  handleSelect(target);
+                }
+              }}
+              className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#f1f5f9] cursor-pointer transition-colors group"
+            >
               <div className="relative flex-shrink-0">
                 <Avatar initials={item.initial} color={item.color} size="md" borderColor="#f8fafc" />
               </div>
