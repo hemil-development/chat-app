@@ -93,13 +93,13 @@ export function StarredSidebar() {
           </div>
         ) : starred.length > 0 ? (
           starred.map(item => (
-            <div
-              key={item.id}
+            <div 
+              key={item.id} 
               onClick={() => {
                 const target = contacts.find(c => c.roomId === item.roomId || c.id === item.roomId);
                 if (target) {
-                  setScrollToMessageId(item.id);
                   handleSelect(target);
+                  setScrollToMessageId(item.id);
                 }
               }}
               className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#f1f5f9] cursor-pointer transition-colors group"

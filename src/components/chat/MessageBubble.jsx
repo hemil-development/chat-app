@@ -186,6 +186,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
             </div>
           )}
           <div
+            id={`bubble-${message.id}`}
             onClick={() => onViewFile && onViewFile(message.file)}
             className={clsx(
               'mt-1 cursor-pointer overflow-hidden rounded-xl animate-slide-up hover:opacity-90 transition-all border w-fit',
@@ -232,7 +233,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
               <span>Forwarded</span>
             </div>
           )}
-          <div className={clsx("flex flex-col items-start gap-1 transition-all rounded-xl", isHighlighted && "ring-2 ring-[#f59e0b] ring-offset-1 ring-offset-white")}>
+          <div id={`bubble-${message.id}`} className={clsx("flex flex-col items-start gap-1 transition-all rounded-xl", isHighlighted && "ring-2 ring-[#f59e0b] ring-offset-1 ring-offset-white")}>
             <FileCard file={message.file} isMe={isMe} onViewFile={onViewFile} />
             {parsedReactions.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1 pl-1">
@@ -262,7 +263,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
     }
   } else {
     bubbleContent = (
-      <div className={clsx(
+      <div id={`bubble-${message.id}`} className={clsx(
         'relative px-4 pt-2 pb-5 text-[14px] leading-relaxed whitespace-pre-wrap break-words w-fit min-w-[80px] shadow-sm animate-slide-up flex flex-col transition-all',
         isMe
           ? 'bg-[#4f46e5] text-white rounded-2xl rounded-tr-sm self-end'
@@ -324,7 +325,11 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
   }
 
   return (
-    <div className={clsx("relative flex items-center gap-2 group/bubble max-w-full", isMe ? "flex-row-reverse self-end" : "flex-row self-start")}>
+    <div className={clsx(
+      "relative flex items-center gap-2 group/bubble max-w-full transition-all", 
+      isMe ? "flex-row-reverse self-end" : "flex-row self-start",
+      (showMenu || showPopover) ? "z-[60]" : "z-10"
+    )}>
 
       {bubbleContent}
 
@@ -466,7 +471,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted }
           {/* Actions Dropdown Menu */}
           {showMenu && (
             <div className={clsx(
-              "absolute z-50 bg-white border border-[#e2e8f0] rounded-xl shadow-lg py-1 w-[150px] animate-scale-in right-0",
+              "absolute z-50 bg-white border border-[#e2e8f0] rounded-md shadow-lg py-1 w-[150px] animate-scale-in right-0",
               menuDirection === 'up' ? "bottom-full mb-1" : "top-full mt-1"
             )}>
               {canEdit && (

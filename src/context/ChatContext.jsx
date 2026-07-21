@@ -380,6 +380,12 @@ export function ChatProvider({ children }) {
   };
 
   const handleSelect = useCallback((contact) => {
+    if (contact && contact.id === activeContactId) {
+      // If we are already on this chat, just ensure we are on the chat tab
+      setActiveTab('chat');
+      return;
+    }
+
     setActiveTab('chat');
     setIsFetchingChat(true);
     setAllMessages([]);
@@ -395,7 +401,7 @@ export function ChatProvider({ children }) {
       return c;
     }));
     if (contact?.roomId) markMessagesAsRead(contact.roomId);
-  }, [markMessagesAsRead, navigate]);
+  }, [markMessagesAsRead, navigate, activeContactId]);
 
   const setActiveContact = handleSelect;
 

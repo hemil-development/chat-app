@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useMemo } from 'react';
+import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { Check, CheckCheck, Search, X, ChevronUp, ChevronDown, Pin, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 import { Virtuoso } from 'react-virtuoso';
@@ -84,16 +84,32 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
     return messages.find(m => m.isPinned && !m.isDeleted);
   }, [messages]);
 
-  const handleScrollToMessage = (msgId) => {
+  const handleScrollToMessage = useCallback((msgId) => {
     const groupIndex = flattenedItems.findIndex(g => g.items.some(m => m.id === msgId));
-    if (groupIndex !== -1) {
+    if (groupIndex !== -1 && virtuosoRef.current) {
       virtuosoRef.current.scrollToIndex({
         index: groupIndex,
         align: 'center',
         behavior: 'smooth'
       });
     }
-  };
+  }, [flattenedItems]);
+
+  useEffect(() => {
+    if (scrollToMessageId && !isFetchingChat && flattenedItems.length > 0) {
+      handleScrollToMessage(scrollToMessageId);
+      
+      // Delay clearing the ID and highlighting so Virtuoso has time to render the DOM node
+      setTimeout(() => {
+        const element = document.getElementById(`bubble-${scrollToMessageId}`);
+        if (element) {
+           element.classList.add('ring-2', 'ring-indigo-500', 'ring-offset-1', 'ring-offset-white');
+           setTimeout(() => element.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-1', 'ring-offset-white'), 2000);
+        }
+        setScrollToMessageId(null);
+      }, 300);
+    }
+  }, [scrollToMessageId, handleScrollToMessage, setScrollToMessageId, isFetchingChat, flattenedItems.length]);
 
   const prevItemsLengthRef = useRef(0);
 
