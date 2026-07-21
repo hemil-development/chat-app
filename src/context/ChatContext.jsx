@@ -951,7 +951,7 @@ export function ChatProvider({ children }) {
       activeChannelRef.current = null;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [currentContact, companyUserId, markMessagesAsRead]);
+  }, [currentContact?.roomId, currentContact?.id, companyUserId, markMessagesAsRead]);
 
   // Global messages sidebar
   useEffect(() => {
