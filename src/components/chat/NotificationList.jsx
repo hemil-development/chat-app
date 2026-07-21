@@ -2,13 +2,15 @@ import { Filter, SlidersHorizontal } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { supabase } from '../../lib/supabase';
 import clsx from 'clsx';
+import { useChat } from '../../context/ChatContext';
 
 export function NotificationList({ notifications = [], onSelectChat, contacts = [] }) {
+  const { markNotificationAsRead, markAllNotificationsAsRead } = useChat();
   const displayNotifications = notifications;
 
   const handleNotificationClick = (n) => {
     if (!n.isRead) {
-      supabase.from('notifications').update({ is_read: true }).eq('id', n.id).then();
+      markNotificationAsRead(n.id);
     }
     
     if (!onSelectChat) return;
@@ -35,7 +37,15 @@ export function NotificationList({ notifications = [], onSelectChat, contacts = 
           <span className="text-[#0f172a] font-bold text-[15px]">
             Notifications
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            {notifications.some(n => !n.isRead) && (
+              <button 
+                onClick={markAllNotificationsAsRead}
+                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100/80 px-2 py-0.5 rounded transition-colors"
+              >
+                Mark all as read
+              </button>
+            )}
             <button className="flex items-center justify-center w-7 h-7 rounded-full text-[#64748b] hover:text-[#0f172a] hover:bg-[#e2e8f0] transition-colors">
               <Filter size={15} strokeWidth={2.5} />
             </button>

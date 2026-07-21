@@ -37,6 +37,40 @@ export function ChatProvider({ children }) {
   const [isFetchingChat, setIsFetchingChat] = useState(true);
   const [scrollToMessageId, setScrollToMessageId] = useState(null);
 
+  const markNotificationAsRead = useCallback(async (notifId) => {
+    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, isRead: true } : n));
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', notifId);
+      if (error) console.error("Error marking notification as read:", error);
+    } catch (err) {
+      console.error("Error in markNotificationAsRead:", err);
+    }
+  }, []);
+
+  const markAllNotificationsAsRead = useCallback(async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    try {
+      if (!companyUserId) return;
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('recipient_id', companyUserId)
+        .eq('is_read', false);
+      if (error) console.error("Error marking all notifications as read:", error);
+    } catch (err) {
+      console.error("Error in markAllNotificationsAsRead:", err);
+    }
+  }, [companyUserId]);
+
+  useEffect(() => {
+    if (activeNav === 'notifications') {
+      markAllNotificationsAsRead();
+    }
+  }, [activeNav, markAllNotificationsAsRead]);
+
   const typingTimeoutsRef = useRef({});
   const activeChannelRef  = useRef(null);
 
@@ -258,7 +292,7 @@ export function ChatProvider({ children }) {
             .from('notifications')
             .select(`
               *,
-              sender:company_users(
+              sender:company_users!notifications_sender_id_fkey(
                 id,
                 users(
                   id,
@@ -1534,6 +1568,7 @@ export function ChatProvider({ children }) {
     forwardingMessage, setForwardingMessage,
     isFetchingChat, setIsFetchingChat,
     scrollToMessageId, setScrollToMessageId,
+    markNotificationAsRead, markAllNotificationsAsRead,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup, handleToggleReaction,
     handleEditMessage, handleDeleteMessage, handleToggleStar, handleForwardMessage, handleTogglePin
   };
