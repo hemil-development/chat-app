@@ -1522,6 +1522,7 @@ export function ChatProvider({ children }) {
   };
 
   const value = {
+    companyUserId,
     activeNav, setActiveNav,
     contacts, setContacts,
     activeContact, setActiveContact,

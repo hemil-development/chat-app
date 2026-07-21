@@ -18,7 +18,8 @@ export function StarredSidebar() {
         const { data, error } = await supabase
           .from('chat_messages')
           .select('*, company_users!chat_messages_created_by_fkey(users(first_name, last_name))')
-          .filter('star_by_users', 'cs', `[{"user_id":"${companyUserId}"}]`)
+          .filter('star_by_users', 'cs', `{"{\\"user_id\\":\\"${companyUserId}\\"}"}`)
+          .eq('is_deleted', false)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -95,9 +96,9 @@ export function StarredSidebar() {
             <div 
               key={item.id} 
               onClick={() => {
-                const contact = contacts.find(c => c.roomId === item.roomId);
-                if (contact) {
-                  handleSelect(contact);
+                const target = contacts.find(c => c.roomId === item.roomId || c.id === item.roomId);
+                if (target) {
+                  handleSelect(target);
                   setScrollToMessageId(item.id);
                 }
               }}

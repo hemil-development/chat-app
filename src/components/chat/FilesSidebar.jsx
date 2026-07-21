@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, SlidersHorizontal, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Search, Filter, SlidersHorizontal, FileText, Image as ImageIcon, Loader2, Eye } from 'lucide-react';
 import clsx from 'clsx';
 import { useChat } from '../../context/ChatContext';
 import { supabase } from '../../lib/supabase';
 import { formatMessageTime } from '../../utils/helpers';
 
 export function FilesSidebar() {
-  const { companyUserId, contacts } = useChat();
+  const { companyUserId, contacts, handleSelect, setScrollToMessageId, setViewingFile } = useChat();
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -20,7 +20,10 @@ export function FilesSidebar() {
       try {
         setLoading(true);
         const roomIds = contacts.map(c => c.roomId).filter(Boolean);
+        console.log("[FilesSidebar] contacts:", contacts);
+        console.log("[FilesSidebar] roomIds:", roomIds);
         if (roomIds.length === 0) {
+          console.log("[FilesSidebar] No roomIds available, skipping query");
           setFiles([]);
           setLoading(false);
           return;
@@ -30,10 +33,15 @@ export function FilesSidebar() {
           .from('chat_messages')
           .select('*, company_users!chat_messages_created_by_fkey(users(first_name, last_name))')
           .eq('type', 'file')
+          .eq('is_deleted', false)
           .in('room_id', roomIds)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        console.log("[FilesSidebar] Supabase query result:", data);
+        if (error) {
+          console.error("[FilesSidebar] Supabase query error:", error);
+          throw error;
+        }
 
         const formatted = (data || []).map(m => {
           let meta = {};
@@ -45,14 +53,17 @@ export function FilesSidebar() {
           const lname = m.company_users?.users?.last_name || '';
           return {
             id: m.id,
+            roomId: m.room_id,
             name: meta.name || 'Unknown File',
             size: meta.size || 'Unknown',
             type: meta.type || '',
             sender: `${fname} ${lname}`.trim(),
             date: formatMessageTime(m.created_at),
-            url: meta.url || '#'
+            url: meta.url || '#',
+            rawMeta: meta
           };
         });
+        console.log("[FilesSidebar] Formatted files:", formatted);
         setFiles(formatted);
       } catch (err) {
         console.error("Error fetching files:", err);
@@ -106,18 +117,43 @@ export function FilesSidebar() {
             const Icon = isImage ? ImageIcon : FileText;
 
             return (
-              <a 
-                href={file.url} 
-                target="_blank" 
-                rel="noopener noreferrer"
+              <div 
                 key={file.id} 
+                onClick={() => {
+                  const target = contacts.find(c => c.roomId === file.roomId || c.id === file.roomId);
+                  if (target) {
+                    setScrollToMessageId(file.id);
+                    handleSelect(target);
+                  }
+                }}
                 className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#f1f5f9] cursor-pointer transition-colors group"
               >
-                <div className={clsx(
-                  "flex items-center justify-center w-10 h-10 rounded-lg flex-shrink-0 transition-colors",
-                  isImage ? "bg-indigo-50 text-indigo-500 group-hover:bg-indigo-100" : "bg-blue-50 text-blue-500 group-hover:bg-blue-100"
-                )}>
-                  <Icon size={18} strokeWidth={2.5} />
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setViewingFile(file.rawMeta);
+                  }}
+                  className="relative w-10 h-10 rounded-lg flex-shrink-0 cursor-pointer overflow-hidden group/thumb flex items-center justify-center border border-[#e2e8f0]/40"
+                >
+                  {isImage && file.url ? (
+                    <img 
+                      src={file.url} 
+                      alt={file.name} 
+                      className="w-full h-full object-cover rounded-lg" 
+                    />
+                  ) : (
+                    <div className={clsx(
+                      "w-full h-full rounded-lg flex items-center justify-center transition-colors",
+                      isImage ? "bg-indigo-50 text-indigo-500 group-hover:bg-indigo-100" : "bg-blue-50 text-blue-500 group-hover:bg-blue-100"
+                    )}>
+                      <Icon size={18} strokeWidth={2.5} />
+                    </div>
+                  )}
+
+                  {/* Hover Eye Overlay */}
+                  <div className="absolute inset-0 bg-black/45 rounded-lg flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity">
+                    <Eye size={16} className="text-white fill-none" strokeWidth={2.5} />
+                  </div>
                 </div>
                 
                 <div className="flex-1 min-w-0">
@@ -139,7 +175,7 @@ export function FilesSidebar() {
                     </span>
                   </div>
                 </div>
-              </a>
+              </div>
             );
           })
         ) : (
