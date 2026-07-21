@@ -5,7 +5,7 @@ import clsx from 'clsx';
 import { useChat } from '../../context/ChatContext';
 
 export function NotificationList({ notifications = [], onSelectChat, contacts = [] }) {
-  const { markNotificationAsRead, markAllNotificationsAsRead } = useChat();
+  const { markNotificationAsRead, markAllNotificationsAsRead, loading } = useChat();
   const displayNotifications = notifications;
 
   const handleNotificationClick = (n) => {
@@ -58,7 +58,22 @@ export function NotificationList({ notifications = [], onSelectChat, contacts = 
 
       {/* List */}
       <div className="flex-1 overflow-y-auto py-1 px-2 space-y-0.5">
-        {displayNotifications.length > 0 ? (
+        {loading ? (
+          <div className="flex-1 overflow-hidden space-y-0.5 mt-2 animate-pulse">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-2.5 px-2 py-[7px] mx-1.5">
+                <div className="w-8 h-8 rounded-full shimmer shrink-0" />
+                <div className="flex-1 min-w-0 ml-1 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="w-24 h-3.5 shimmer rounded-sm" />
+                    <div className="w-8 h-2.5 shimmer rounded-sm" />
+                  </div>
+                  <div className="w-3/4 h-3 shimmer rounded-sm" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : displayNotifications.length > 0 ? (
           displayNotifications.map(n => (
             <div
               key={n.id}

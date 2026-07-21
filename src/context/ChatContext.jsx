@@ -577,7 +577,13 @@ export function ChatProvider({ children }) {
                   .replace(/_([^_]+)_/g, '$1');
                 preview = `You: ${cleanText}`;
               } else if (lastUploadedMsg) {
-                const isImg = fileMeta?.type?.startsWith('image/');
+                let isImg = false;
+                try {
+                  const parsed = typeof lastUploadedMsg.message === 'string'
+                    ? JSON.parse(lastUploadedMsg.message)
+                    : lastUploadedMsg.message;
+                  isImg = parsed?.type?.startsWith('image/');
+                } catch (e) {}
                 preview = `You: sent a ${isImg ? 'image' : 'file'}`;
               }
               return {

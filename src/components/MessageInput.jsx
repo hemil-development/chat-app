@@ -78,9 +78,17 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
       if (editorRef.current) {
         editorRef.current.innerHTML = '';
         setIsEmpty(true);
+        editorRef.current.focus();
       }
     }
   }, [editingMessage]);
+
+  // Auto-focus editor when a reply (quote) is initiated
+  useEffect(() => {
+    if (quoteMessage && editorRef.current) {
+      editorRef.current.focus();
+    }
+  }, [quoteMessage]);
 
   const [isBoldActive, setIsBoldActive]     = useState(false);
   const [isItalicActive, setIsItalicActive] = useState(false);

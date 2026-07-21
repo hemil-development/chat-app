@@ -55,7 +55,7 @@ function renderEmojiHelper(emojiChar, size) {
   return <Emoji unified={getEmojiUnified(emojiChar)} size={size} />;
 }
 
-function renderMessageText(text) {
+function renderMessageText(text, contacts = [], isMe = false) {
   if (!text) return '';
 
   // 1. Escape raw string characters first to prevent XSS injection
@@ -98,12 +98,48 @@ function renderMessageText(text) {
     .replace(boldRegex, '<strong>$1</strong>')
     .replace(italicRegex, '<em>$1</em>');
 
+  // 4. Parse mentions from contacts list
+  const mentionNames = (contacts || [])
+    .map(c => c.name)
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+
+  const matchedMentions = new Set();
+
+  for (const name of mentionNames) {
+    const escapedName = name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const regex = new RegExp(`@${escapedName}(?!\\w)`, 'gi');
+    if (regex.test(escaped)) {
+      escaped = escaped.replace(regex, (match) => {
+        const badgeClass = isMe 
+          ? 'font-bold text-indigo-200 bg-white/10 px-1.5 py-0.5 rounded-md select-all' 
+          : 'font-bold text-indigo-700 bg-indigo-50/70 px-1.5 py-0.5 rounded-md select-all';
+        return `<span class="${badgeClass}">${match}</span>`;
+      });
+      matchedMentions.add(name.toLowerCase());
+    }
+  }
+
+  // Fallback for any capitalized names starting with @ (e.g. current user Nehal Shetty, or offline/other users)
+  // Matches @ followed by 1 to 3 Capitalized words
+  const fallbackRegex = /@([A-Z][a-zA-Z0-9_-]*(?:\s+[A-Z][a-zA-Z0-9_-]*){0,2})(?!\w)/g;
+  escaped = escaped.replace(fallbackRegex, (match, nameGroup) => {
+    if (matchedMentions.has(nameGroup.toLowerCase())) {
+      return match;
+    }
+    const badgeClass = isMe 
+      ? 'font-bold text-indigo-200 bg-white/10 px-1.5 py-0.5 rounded-md select-all' 
+      : 'font-bold text-indigo-700 bg-indigo-50/70 px-1.5 py-0.5 rounded-md select-all';
+    return `<span class="${badgeClass}">${match}</span>`;
+  });
+
   return <span dangerouslySetInnerHTML={{ __html: escaped }} />;
 }
 
 export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, replyToMessage }) {
   const {
     companyUserId,
+    currentUser,
     handleToggleReaction,
     setEditingMessage,
     handleToggleStar,
@@ -387,7 +423,15 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
               </div>
             );
         })()}
-        <div className="pb-0.5">{renderMessageText(message.text)}</div>
+        {(() => {
+          const allUsers = [...contacts];
+          if (currentUser && !allUsers.some(u => u.id === currentUser.id)) {
+            allUsers.push(currentUser);
+          }
+          return (
+            <div className="pb-0.5">{renderMessageText(message.text, allUsers, isMe)}</div>
+          );
+        })()}
 
         {parsedReactions.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5 pb-1">
@@ -474,17 +518,19 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
         Forward
       </button>
 
-      <button
-        onClick={() => {
-          navigator.clipboard.writeText(message.text || '');
-          setChatAlert({ type: 'success', message: 'Message copied to clipboard' });
-          setShowMenu(false);
-        }}
-        className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
-      >
-        <Copy size={12} className="text-slate-400" />
-        Copy
-      </button>
+      {message.type !== 'file' && (
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(message.text || '');
+            setChatAlert({ type: 'success', message: 'Message copied to clipboard' });
+            setShowMenu(false);
+          }}
+          className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"
+        >
+          <Copy size={12} className="text-slate-400" />
+          Copy
+        </button>
+      )}
 
       <button
         onClick={() => {
