@@ -24,8 +24,11 @@ export function FileViewer({ file, onClose }) {
   const isImage = file?.type?.startsWith('image/');
   const isPdf = file?.type === 'application/pdf' || ext === 'pdf';
   const isDocx = ext === 'docx';
-  const isExcel = ext === 'xls' || ext === 'xlsx';
+  const isExcel = ext === 'xls' || ext === 'xlsx' || ext === 'csv';
   const isPpt = ext === 'ppt' || ext === 'pptx';
+  const isVideo = ext === 'mp4' || ext === 'webm' || ext === 'ogg';
+  const isAudio = ext === 'mp3' || ext === 'wav';
+  const isText = ext === 'txt' || ext === 'json' || ext === 'sql' || ext === 'js' || ext === 'jsx' || ext === 'ts' || ext === 'tsx' || ext === 'css' || ext === 'html' || ext === 'gitconfig' || ext === 'config' || ext === 'log' || ext === 'sh' || ext === 'md' || ext === 'xml' || ext === 'yaml' || ext === 'yml' || file?.name?.startsWith('.');
 
   // Some backends serve files with a query param that forces
   // Content-Disposition: attachment (e.g. ?download=...). That's fine for
@@ -35,6 +38,7 @@ export function FileViewer({ file, onClose }) {
   const previewUrl = file?.url?.split('?download=')[0] || file?.url;
 
   const [pdfFailed, setPdfFailed] = useState(false);
+  const [textContent, setTextContent] = useState('');
   useEffect(() => {
     setPdfFailed(false);
   }, [file?.url]);
@@ -84,6 +88,15 @@ export function FileViewer({ file, onClose }) {
           setSheetHtml(htmls);
         })
         .catch(() => setError('This spreadsheet could not be previewed.'))
+        .finally(() => setLoading(false));
+    } else if (isText) {
+      setLoading(true);
+      fetch(file.url)
+        .then((res) => res.text())
+        .then((text) => {
+          setTextContent(text);
+        })
+        .catch(() => setError('This text file could not be previewed.'))
         .finally(() => setLoading(false));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -238,6 +251,32 @@ export function FileViewer({ file, onClose }) {
             )
           ) : isPpt ? (
             <NoPreview message="Slide previews aren't supported yet — download the file to view it." />
+          ) : isVideo ? (
+            <video
+              src={file.url}
+              controls
+              className="max-w-full max-h-[85vh] rounded-lg shadow-2xl animate-scale-in"
+              autoPlay
+            />
+          ) : isAudio ? (
+            <audio
+              src={file.url}
+              controls
+              className="w-[400px] shadow-2xl animate-scale-in"
+              autoPlay
+            />
+          ) : isText ? (
+            loading ? (
+              <Spinner />
+            ) : error ? (
+              <NoPreview message={error} />
+            ) : (
+              <div className="w-[92vw] h-[88vh] rounded-lg shadow-2xl bg-[#0f172a] text-[#e2e8f0] animate-scale-in flex flex-col overflow-hidden border border-slate-800" onClick={(e) => e.stopPropagation()}>
+                <div className="flex-1 overflow-auto p-6 font-mono text-[13px] leading-relaxed whitespace-pre select-text text-left">
+                  {textContent}
+                </div>
+              </div>
+            )
           ) : (
             <NoPreview message="This file type cannot be previewed in the browser." />
           )}
