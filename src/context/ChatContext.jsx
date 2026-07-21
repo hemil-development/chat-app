@@ -310,18 +310,27 @@ export function ChatProvider({ children }) {
               const act = (n.action || '').toLowerCase();
               return act.includes('mention') || act.includes('react');
             });
-            const formattedNotifs = filtered.map(n => ({
-              id: n.id,
-              name: `${n.sender?.users?.first_name || 'Someone'}`,
-              action: n.action,
-              preview: n.preview,
-              time: formatMessageTime(n.created_at),
-              color: getUserColor(n.sender_id),
-              initial: `${n.sender?.users?.first_name?.[0] || '?'}${n.sender?.users?.last_name?.[0] || ''}`.toUpperCase(),
-              emoji: n.emoji || '🔔',
-              isRead: n.is_read,
-              linkId: n.link_id,
-            }));
+            const formattedNotifs = filtered.map(n => {
+              let previewText = n.preview;
+              if (previewText && previewText.trim().startsWith('{')) {
+                try {
+                  const parsed = JSON.parse(previewText);
+                  previewText = parsed.text || parsed.name || previewText;
+                } catch (e) {}
+              }
+              return {
+                id: n.id,
+                name: `${n.sender?.users?.first_name || 'Someone'}`,
+                action: n.action,
+                preview: previewText,
+                time: formatMessageTime(n.created_at),
+                color: getUserColor(n.sender_id),
+                initial: `${n.sender?.users?.first_name?.[0] || '?'}${n.sender?.users?.last_name?.[0] || ''}`.toUpperCase(),
+                emoji: n.emoji || '🔔',
+                isRead: n.is_read,
+                linkId: n.link_id,
+              };
+            });
             setNotifications(formattedNotifs);
           }
         } catch (errNotif) {
@@ -1278,11 +1287,19 @@ export function ChatProvider({ children }) {
                 .eq('id', newNotif.sender_id)
                 .single();
 
+              let previewText = newNotif.preview;
+              if (previewText && previewText.trim().startsWith('{')) {
+                try {
+                  const parsed = JSON.parse(previewText);
+                  previewText = parsed.text || parsed.name || previewText;
+                } catch (e) {}
+              }
+
               const formatted = {
                 id: newNotif.id,
                 name: `${senderData?.users?.first_name || 'Someone'}`,
                 action: newNotif.action,
-                preview: newNotif.preview,
+                preview: previewText,
                 time: formatMessageTime(newNotif.created_at),
                 color: getUserColor(newNotif.sender_id),
                 initial: `${senderData?.users?.first_name?.[0] || '?'}${senderData?.users?.last_name?.[0] || ''}`.toUpperCase(),
@@ -1368,6 +1385,13 @@ export function ChatProvider({ children }) {
       // Insert notification if reaction was added (and not by the message author)
       if (existingIdx === -1 && msg.created_by && msg.created_by !== companyUserId) {
         let msgPreview = msg.message;
+        if (msgPreview && msgPreview.trim().startsWith('{')) {
+          try {
+            const meta = JSON.parse(msgPreview);
+            msgPreview = meta.text || meta.name || msgPreview;
+          } catch (e) {}
+        }
+
         if (msg.type === 'file') {
            try {
              const meta = JSON.parse(msg.message);
