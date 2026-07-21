@@ -341,6 +341,7 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
                         );
 
                         const isHighlighted = (matches.length > 0 && matches[activeMatchIndex]?.id === msg.id) || tempHighlightId === msg.id;
+                        const replyToMessage = msg.replyToMessageId ? messages.find(m => m.id === msg.replyToMessageId) : null;
 
                         return (
                           <div key={msg.id} id={`msg-${msg.id}`}>
@@ -350,6 +351,7 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
                               tick={tick}
                               onViewFile={onViewFile}
                               isHighlighted={isHighlighted}
+                              replyToMessage={replyToMessage}
                             />
                           </div>
                         );

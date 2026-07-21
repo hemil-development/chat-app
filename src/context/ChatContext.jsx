@@ -479,7 +479,13 @@ export function ChatProvider({ children }) {
 
           const { data: insertedMsg, error: msgErr } = await supabase
             .from('chat_messages')
-            .insert({ room_id: roomId, created_by: companyUserId, message: JSON.stringify(fileMeta), type: 'file' })
+            .insert({ 
+              room_id: roomId, 
+              created_by: companyUserId, 
+              message: JSON.stringify(fileMeta), 
+              type: 'file',
+              reply_to_message_id: quoteMessage?.id || null
+            })
             .select()
             .single();
 
@@ -496,6 +502,7 @@ export function ChatProvider({ children }) {
               timestamp: new Date(insertedMsg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
               type: 'file',
               createdAt: insertedMsg.created_at,
+              replyToMessageId: insertedMsg.reply_to_message_id,
             }];
           });
         }
@@ -505,7 +512,13 @@ export function ChatProvider({ children }) {
       if (text) {
         const { data: insertedMsg, error: msgErr } = await supabase
           .from('chat_messages')
-          .insert({ room_id: roomId, created_by: companyUserId, message: text, type: 'text' })
+          .insert({ 
+            room_id: roomId, 
+            created_by: companyUserId, 
+            message: text, 
+            type: 'text',
+            reply_to_message_id: quoteMessage?.id || null
+          })
           .select()
           .single();
 
@@ -521,6 +534,7 @@ export function ChatProvider({ children }) {
             timestamp: new Date(insertedMsg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
             type: 'text',
             createdAt: insertedMsg.created_at,
+            replyToMessageId: insertedMsg.reply_to_message_id,
           }];
         });
 
@@ -543,6 +557,7 @@ export function ChatProvider({ children }) {
 
       const latestMsg = newMsgText || lastUploadedMsg;
       if (latestMsg) {
+        setQuoteMessage(null);
         await supabase.from('chat_rooms').update({ last_message_id: latestMsg.id }).eq('id', roomId);
 
         setContacts(prev => {
@@ -825,6 +840,7 @@ export function ChatProvider({ children }) {
             isEdited: m.is_edited,
             isDeleted: m.is_deleted,
             isPinned: m.is_pinned || false,
+            replyToMessageId: m.reply_to_message_id,
             isStarred: (m.star_by_users || []).some(s => {
               const parsed = typeof s === 'string' ? JSON.parse(s) : s;
               return parsed?.user_id === companyUserId;
@@ -895,6 +911,7 @@ export function ChatProvider({ children }) {
                     isEdited: m.is_edited,
                     isDeleted: m.is_deleted,
                     isPinned: m.is_pinned || false,
+                    replyToMessageId: m.reply_to_message_id,
                     isStarred: (m.star_by_users || []).some(s => {
                       const parsed = typeof s === 'string' ? JSON.parse(s) : s;
                       return parsed?.user_id === companyUserId;
