@@ -35,6 +35,7 @@ export function ChatProvider({ children }) {
   const [quoteMessage, setQuoteMessage] = useState(null);
   const [forwardingMessage, setForwardingMessage] = useState(null);
   const [isFetchingChat, setIsFetchingChat] = useState(true);
+  const [scrollToMessageId, setScrollToMessageId] = useState(null);
 
   const typingTimeoutsRef = useRef({});
   const activeChannelRef  = useRef(null);
@@ -345,6 +346,12 @@ export function ChatProvider({ children }) {
   };
 
   const handleSelect = useCallback((contact) => {
+    if (contact && contact.id === activeContactId) {
+      // If we are already on this chat, just ensure we are on the chat tab
+      setActiveTab('chat');
+      return;
+    }
+
     setActiveTab('chat');
     setIsFetchingChat(true);
     setAllMessages([]);
@@ -360,7 +367,7 @@ export function ChatProvider({ children }) {
       return c;
     }));
     if (contact?.roomId) markMessagesAsRead(contact.roomId);
-  }, [markMessagesAsRead, navigate]);
+  }, [markMessagesAsRead, navigate, activeContactId]);
 
   const setActiveContact = handleSelect;
 
@@ -1531,6 +1538,7 @@ export function ChatProvider({ children }) {
     quoteMessage, setQuoteMessage,
     forwardingMessage, setForwardingMessage,
     isFetchingChat, setIsFetchingChat,
+    scrollToMessageId, setScrollToMessageId,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup, handleToggleReaction,
     handleEditMessage, handleDeleteMessage, handleToggleStar, handleForwardMessage, handleTogglePin
   };

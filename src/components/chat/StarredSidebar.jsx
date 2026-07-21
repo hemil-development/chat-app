@@ -6,7 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { formatMessageTime, getUserColor } from '../../utils/helpers';
 
 export function StarredSidebar() {
-  const { companyUserId } = useChat();
+  const { companyUserId, contacts, handleSelect, setScrollToMessageId } = useChat();
   const [starred, setStarred] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,6 +35,7 @@ export function StarredSidebar() {
           const lname = m.company_users?.users?.last_name || '';
           return {
             id: m.id,
+            roomId: m.room_id,
             name: `${fname} ${lname}`.trim(),
             preview: preview,
             date: formatMessageTime(m.created_at),
@@ -91,7 +92,17 @@ export function StarredSidebar() {
           </div>
         ) : starred.length > 0 ? (
           starred.map(item => (
-            <div key={item.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#f1f5f9] cursor-pointer transition-colors group">
+            <div 
+              key={item.id} 
+              onClick={() => {
+                const contact = contacts.find(c => c.roomId === item.roomId);
+                if (contact) {
+                  handleSelect(contact);
+                  setScrollToMessageId(item.id);
+                }
+              }}
+              className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#f1f5f9] cursor-pointer transition-colors group"
+            >
               <div className="relative flex-shrink-0">
                 <Avatar initials={item.initial} color={item.color} size="md" borderColor="#f8fafc" />
               </div>

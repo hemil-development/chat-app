@@ -6,7 +6,7 @@ import { Avatar } from './ui/Avatar';
 import clsx from 'clsx';
 
 export function StarredPanel() {
-  const { currentUser, contacts, handleToggleStar } = useChat();
+  const { currentUser, contacts, handleToggleStar, setActiveTab, setScrollToMessageId } = useChat();
   const [starredMessages, setStarredMessages] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -104,6 +104,10 @@ export function StarredPanel() {
               return (
                 <div
                   key={msg.id}
+                  onClick={() => {
+                    setActiveTab('chat');
+                    setScrollToMessageId(msg.id);
+                  }}
                   className="flex items-start gap-4 p-4 bg-white border border-[#e2e8f0]
                              rounded-xl hover:border-[#cbd5e1] hover:shadow-sm transition-all duration-150
                              cursor-pointer group"
