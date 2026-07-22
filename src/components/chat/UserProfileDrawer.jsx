@@ -1,20 +1,18 @@
 import { useState, useEffect } from 'react';
-import { X, Mail, MessageSquare, Copy, LogOut, Check } from 'lucide-react';
+import { X, Mail, LogOut, Check } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { supabase } from '../../lib/supabase';
 import { useChat } from '../../context/ChatContext';
 import clsx from 'clsx';
 
 export function UserProfileDrawer({ isOpen, onClose, currentUser }) {
-  const { setChatAlert } = useChat();
-  const [notificationSound, setNotificationSound] = useState(true);
+  const { 
+    setChatAlert 
+  } = useChat();
 
   if (!isOpen || !currentUser) return null;
 
-  const handleCopyProfileLink = () => {
-    navigator.clipboard.writeText(currentUser.email || '');
-    setChatAlert({ type: 'success', message: 'Email copied to clipboard' });
-  };
+
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -69,23 +67,6 @@ export function UserProfileDrawer({ isOpen, onClose, currentUser }) {
               {currentUser.role || 'Frontend Developer'}
             </p>
 
-            {/* Quick Actions Buttons */}
-            <div className="flex items-center gap-2.5 mt-3.5">
-              <button 
-                onClick={onClose}
-                className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-slate-50 hover:border-indigo-200 transition-all shadow-2xs"
-                title="Send Message"
-              >
-                <MessageSquare size={14} />
-              </button>
-              <button 
-                onClick={handleCopyProfileLink}
-                className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-slate-50 hover:border-indigo-200 transition-all shadow-2xs"
-                title="Copy Email"
-              >
-                <Copy size={13} />
-              </button>
-            </div>
 
             {/* Email field */}
             {currentUser.email && (
@@ -97,28 +78,10 @@ export function UserProfileDrawer({ isOpen, onClose, currentUser }) {
           </div>
 
 
-          {/* Notification Setting Section */}
-          <div className="border-b border-[#e2e8f0]">
-            <div className="bg-slate-50/50 px-5 py-2 border-b border-[#e2e8f0]/60">
-              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Notification Setting</span>
-            </div>
-            <div className="bg-white px-6 py-3 flex items-center justify-between">
-              <span className="text-[12.5px] font-semibold text-slate-700">Notification Sound</span>
-              <button 
-                onClick={() => setNotificationSound(!notificationSound)}
-                className={clsx(
-                  "w-9 h-5 rounded-full flex items-center transition-colors shadow-2xs",
-                  notificationSound ? "bg-indigo-600 justify-end" : "bg-slate-200 justify-start"
-                )}
-                style={{ padding: '2.5px' }}
-              >
-                <div className="w-3.5 h-3.5 rounded-full bg-white shadow-sm" />
-              </button>
-            </div>
-          </div>
+
 
           {/* Organizations Section */}
-          <div className="border-b border-[#e2e8f0]">
+          {/* <div className="border-b border-[#e2e8f0]">
             <div className="bg-slate-50/50 px-5 py-2 border-b border-[#e2e8f0]/60">
               <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Organizations</span>
             </div>
@@ -126,7 +89,7 @@ export function UserProfileDrawer({ isOpen, onClose, currentUser }) {
               <Check size={14} className="text-[#22c55e] shrink-0 stroke-[2.5]" />
               <span className="text-[12.5px] font-bold text-indigo-600">Digipie Technologies LLP</span>
             </div>
-          </div>
+          </div> */}
 
         </div>
 
