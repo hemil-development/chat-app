@@ -142,6 +142,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
     currentUser,
     handleToggleReaction,
     setEditingMessage,
+    setShowEditTimeLimitModal,
     handleToggleStar,
     handleDeleteMessage,
     setChatAlert,
@@ -485,7 +486,16 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
       {canEdit && (
         <button
           onClick={() => {
-            setEditingMessage(message);
+            const createdAtTime = new Date(message.createdAt).getTime();
+            const currentTime = Date.now();
+            const diffMs = currentTime - createdAtTime;
+            const diffMins = diffMs / 1000 / 60;
+            
+            if (diffMins > 5) {
+              setShowEditTimeLimitModal(true);
+            } else {
+              setEditingMessage(message);
+            }
             setShowMenu(false);
           }}
           className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#475569] hover:bg-slate-50 transition-colors font-medium"

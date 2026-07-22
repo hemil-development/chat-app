@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, SlidersHorizontal, FileText, Image as ImageIcon, Loader2, Eye } from 'lucide-react';
+import { Search, Filter, SlidersHorizontal, FileText, Image as ImageIcon, Check, Eye } from 'lucide-react';
 import clsx from 'clsx';
 import { useChat } from '../../context/ChatContext';
 import { supabase } from '../../lib/supabase';
@@ -9,6 +9,10 @@ export function FilesSidebar() {
   const { companyUserId, contacts, handleSelect, setScrollToMessageId, setViewingFile } = useChat();
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState('all'); // 'all' | 'public' | 'private' | 'personal'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isSortOpen, setIsSortOpen] = useState(false);
 
   useEffect(() => {
     if (!companyUserId || !contacts) {
@@ -60,7 +64,8 @@ export function FilesSidebar() {
             sender: `${fname} ${lname}`.trim(),
             date: formatMessageTime(m.created_at),
             url: meta.url || '#',
-            rawMeta: meta
+            rawMeta: meta,
+            createdAt: m.created_at,
           };
         });
         console.log("[FilesSidebar] Formatted files:", formatted);
@@ -73,6 +78,49 @@ export function FilesSidebar() {
     };
     fetchFiles();
   }, [companyUserId, contacts]);
+
+  // Filter logic
+  const filteredFiles = files.filter(file => {
+    if (filterType === 'all') return true;
+
+    const contact = contacts.find(c => c.roomId === file.roomId || c.id === file.roomId);
+
+    if (filterType === 'personal') {
+      return !contact || !contact.isChannel;
+    }
+
+    if (filterType === 'public') {
+      return contact && contact.isChannel && (
+        contact.name.toLowerCase().includes('test') || 
+        contact.name.toLowerCase().includes('group') ||
+        contact.name.toLowerCase().includes('akash') ||
+        contact.name.toLowerCase().includes('testing02')
+      );
+    }
+
+    if (filterType === 'private') {
+      return contact && contact.isChannel && !(
+        contact.name.toLowerCase().includes('test') || 
+        contact.name.toLowerCase().includes('group') ||
+        contact.name.toLowerCase().includes('akash') ||
+        contact.name.toLowerCase().includes('testing02')
+      );
+    }
+
+    return true;
+  });
+
+  // Sort logic
+  const sortedFiles = [...filteredFiles].sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+
+    if (sortOrder === 'asc') {
+      return timeA - timeB;
+    } else {
+      return timeB - timeA;
+    }
+  });
 
   return (
     <div className="flex flex-col w-full flex-shrink-0 h-full bg-transparent">
@@ -94,13 +142,87 @@ export function FilesSidebar() {
           <span className="text-[#0f172a] font-bold text-[14px]">
             Files
           </span>
-          <div className="flex items-center gap-1">
-            <button className="flex items-center justify-center w-6 h-6 rounded-md text-[#64748b] hover:text-[#0f172a] hover:bg-[#e2e8f0] transition-colors">
+          <div className="flex items-center gap-1.5 relative">
+            <button 
+              onClick={() => {
+                setIsFilterOpen(!isFilterOpen);
+                setIsSortOpen(false);
+              }}
+              className={clsx(
+                "flex items-center justify-center w-7 h-7 rounded-full transition-colors",
+                isFilterOpen ? "bg-[#e2e8f0] text-[#0f172a]" : "text-[#64748b] hover:text-[#0f172a] hover:bg-[#e2e8f0]"
+              )}
+            >
               <Filter size={14} strokeWidth={2.5} />
             </button>
-            <button className="flex items-center justify-center w-6 h-6 rounded-md text-[#64748b] hover:text-[#0f172a] hover:bg-[#e2e8f0] transition-colors">
+            <button 
+              onClick={() => {
+                setIsSortOpen(!isSortOpen);
+                setIsFilterOpen(false);
+              }}
+              className={clsx(
+                "flex items-center justify-center w-7 h-7 rounded-full transition-colors",
+                isSortOpen ? "bg-[#e2e8f0] text-[#0f172a]" : "text-[#64748b] hover:text-[#0f172a] hover:bg-[#e2e8f0]"
+              )}
+            >
               <SlidersHorizontal size={13} strokeWidth={2.5} />
             </button>
+
+            {/* Filter Dropdown */}
+            {isFilterOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsFilterOpen(false)} />
+                <div className="absolute right-8 top-8 z-50 bg-white border border-[#e2e8f0] rounded-md shadow-lg py-1 w-[140px] animate-scale-in text-[12px] flex flex-col text-slate-700">
+                  {[
+                    { id: 'all', label: 'All' },
+                    { id: 'public', label: 'Public Channel' },
+                    { id: 'private', label: 'Private Channel' },
+                    { id: 'personal', label: 'Personal' }
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      onClick={() => {
+                        setFilterType(opt.id);
+                        setIsFilterOpen(false);
+                      }}
+                      className="w-full px-3 py-2 flex items-center justify-between text-left hover:bg-slate-50 transition-colors font-medium text-slate-600 hover:text-slate-900"
+                    >
+                      <span>{opt.label}</span>
+                      {filterType === opt.id && (
+                        <Check size={13} className="text-indigo-600 stroke-[2.5]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Sort Dropdown */}
+            {isSortOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsSortOpen(false)} />
+                <div className="absolute right-0 top-8 z-50 bg-white border border-[#e2e8f0] rounded-md shadow-lg py-1 w-[110px] animate-scale-in text-[12px] flex flex-col text-slate-700">
+                  {[
+                    { id: 'asc', label: 'Ascending' },
+                    { id: 'desc', label: 'Descending' }
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      onClick={() => {
+                        setSortOrder(opt.id);
+                        setIsSortOpen(false);
+                      }}
+                      className="w-full px-3 py-2 flex items-center justify-between text-left hover:bg-slate-50 transition-colors font-medium text-slate-600 hover:text-slate-900"
+                    >
+                      <span>{opt.label}</span>
+                      {sortOrder === opt.id && (
+                        <Check size={13} className="text-indigo-600 stroke-[2.5]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -122,8 +244,8 @@ export function FilesSidebar() {
               </div>
             ))}
           </div>
-        ) : files.length > 0 ? (
-          files.map(file => {
+        ) : sortedFiles.length > 0 ? (
+          sortedFiles.map(file => {
             const isImage = file.type?.startsWith('image/');
             const Icon = isImage ? ImageIcon : FileText;
 

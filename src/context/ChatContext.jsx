@@ -36,6 +36,7 @@ export function ChatProvider({ children }) {
   const [forwardingMessage, setForwardingMessage] = useState(null);
   const [isFetchingChat, setIsFetchingChat] = useState(true);
   const [scrollToMessageId, setScrollToMessageId] = useState(null);
+  const [showEditTimeLimitModal, setShowEditTimeLimitModal] = useState(false);
 
   // Clear temporary message states when switching chats
   useEffect(() => {
@@ -123,7 +124,7 @@ export function ChatProvider({ children }) {
           id: companyUserId,
           name: 'Hemil Gandhi',
           initials: 'HG',
-          color: '#4f46e5',
+          color: getUserColor(companyUserId),
           status: 'online',
           role: 'Python Department',
         };
@@ -133,10 +134,11 @@ export function ChatProvider({ children }) {
             id: hemilData.id,
             name: `${hemilData.users.first_name || ''} ${hemilData.users.last_name || ''}`.trim(),
             initials: `${hemilData.users.first_name?.[0] || ''}${hemilData.users.last_name?.[0] || ''}`.toUpperCase() || 'HG',
-            color: '#4f46e5',
+            color: getUserColor(hemilData.id),
             status: 'online',
             role: hemilData.department || hemilData.designation || 'Python Department',
             avatar: hemilData.users.avatar_url,
+            email: hemilData.users.email,
           };
           setCurrentUser(resolvedCurrentUser);
         }
@@ -336,6 +338,7 @@ export function ChatProvider({ children }) {
                 emoji: n.emoji || '🔔',
                 isRead: n.is_read,
                 linkId: n.link_id,
+                createdAt: n.created_at,
               };
             });
             setNotifications(formattedNotifs);
@@ -1336,6 +1339,7 @@ export function ChatProvider({ children }) {
                 emoji: newNotif.emoji || '🔔',
                 isRead: newNotif.is_read,
                 linkId: newNotif.link_id,
+                createdAt: newNotif.created_at,
               };
 
               setNotifications(prev => [formatted, ...prev]);
@@ -1624,6 +1628,7 @@ export function ChatProvider({ children }) {
     chatAlert, setChatAlert,
     isSearchOpen, setIsSearchOpen,
     editingMessage, setEditingMessage,
+    showEditTimeLimitModal, setShowEditTimeLimitModal,
     quoteMessage, setQuoteMessage,
     forwardingMessage, setForwardingMessage,
     isFetchingChat, setIsFetchingChat,

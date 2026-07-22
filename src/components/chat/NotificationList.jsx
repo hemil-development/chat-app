@@ -1,4 +1,5 @@
-import { Filter, SlidersHorizontal } from 'lucide-react';
+import { useState } from 'react';
+import { Filter, SlidersHorizontal, Check } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { supabase } from '../../lib/supabase';
 import clsx from 'clsx';
@@ -6,7 +7,10 @@ import { useChat } from '../../context/ChatContext';
 
 export function NotificationList({ notifications = [], onSelectChat, contacts = [] }) {
   const { markNotificationAsRead, markAllNotificationsAsRead, loading } = useChat();
-  const displayNotifications = notifications;
+  const [filterType, setFilterType] = useState('all'); // 'all' | 'public' | 'private' | 'personal'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isSortOpen, setIsSortOpen] = useState(false);
 
   const handleNotificationClick = (n) => {
     if (!n.isRead) {
@@ -29,6 +33,49 @@ export function NotificationList({ notifications = [], onSelectChat, contacts = 
     }
   };
 
+  // Filter logic
+  const filteredNotifications = notifications.filter(n => {
+    if (filterType === 'all') return true;
+    
+    const contact = contacts.find(c => c.roomId === n.linkId || c.id === n.linkId);
+    
+    if (filterType === 'personal') {
+      return !contact || !contact.isChannel;
+    }
+    
+    if (filterType === 'public') {
+      return contact && contact.isChannel && (
+        contact.name.toLowerCase().includes('test') || 
+        contact.name.toLowerCase().includes('group') ||
+        contact.name.toLowerCase().includes('akash') ||
+        contact.name.toLowerCase().includes('testing02')
+      );
+    }
+    
+    if (filterType === 'private') {
+      return contact && contact.isChannel && !(
+        contact.name.toLowerCase().includes('test') || 
+        contact.name.toLowerCase().includes('group') ||
+        contact.name.toLowerCase().includes('akash') ||
+        contact.name.toLowerCase().includes('testing02')
+      );
+    }
+    
+    return true;
+  });
+
+  // Sort logic
+  const sortedNotifications = [...filteredNotifications].sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    
+    if (sortOrder === 'asc') {
+      return timeA - timeB;
+    } else {
+      return timeB - timeA;
+    }
+  });
+
   return (
     <div className="flex flex-col w-full flex-shrink-0 h-full bg-transparent">
       {/* Header Area */}
@@ -37,7 +84,7 @@ export function NotificationList({ notifications = [], onSelectChat, contacts = 
           <span className="text-[#0f172a] font-bold text-[15px]">
             Notifications
           </span>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 relative">
             {notifications.some(n => !n.isRead) && (
               <button 
                 onClick={markAllNotificationsAsRead}
@@ -46,12 +93,86 @@ export function NotificationList({ notifications = [], onSelectChat, contacts = 
                 Mark all as read
               </button>
             )}
-            <button className="flex items-center justify-center w-7 h-7 rounded-full text-[#64748b] hover:text-[#0f172a] hover:bg-[#e2e8f0] transition-colors">
+            <button 
+              onClick={() => {
+                setIsFilterOpen(!isFilterOpen);
+                setIsSortOpen(false);
+              }}
+              className={clsx(
+                "flex items-center justify-center w-7 h-7 rounded-full transition-colors",
+                isFilterOpen ? "bg-[#e2e8f0] text-[#0f172a]" : "text-[#64748b] hover:text-[#0f172a] hover:bg-[#e2e8f0]"
+              )}
+            >
               <Filter size={15} strokeWidth={2.5} />
             </button>
-            <button className="flex items-center justify-center w-7 h-7 rounded-full text-[#64748b] hover:text-[#0f172a] hover:bg-[#e2e8f0] transition-colors">
+            <button 
+              onClick={() => {
+                setIsSortOpen(!isSortOpen);
+                setIsFilterOpen(false);
+              }}
+              className={clsx(
+                "flex items-center justify-center w-7 h-7 rounded-full transition-colors",
+                isSortOpen ? "bg-[#e2e8f0] text-[#0f172a]" : "text-[#64748b] hover:text-[#0f172a] hover:bg-[#e2e8f0]"
+              )}
+            >
               <SlidersHorizontal size={14} strokeWidth={2.5} />
             </button>
+
+            {/* Filter Dropdown */}
+            {isFilterOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsFilterOpen(false)} />
+                <div className="absolute right-8 top-8 z-50 bg-white border border-[#e2e8f0] rounded-md shadow-lg py-1 w-[140px] animate-scale-in text-[12px] flex flex-col text-slate-700">
+                  {[
+                    { id: 'all', label: 'All' },
+                    { id: 'public', label: 'Public Channel' },
+                    { id: 'private', label: 'Private Channel' },
+                    { id: 'personal', label: 'Personal' }
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      onClick={() => {
+                        setFilterType(opt.id);
+                        setIsFilterOpen(false);
+                      }}
+                      className="w-full px-3 py-2 flex items-center justify-between text-left hover:bg-slate-50 transition-colors font-medium text-slate-600 hover:text-slate-900"
+                    >
+                      <span>{opt.label}</span>
+                      {filterType === opt.id && (
+                        <Check size={13} className="text-indigo-600 stroke-[2.5]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Sort Dropdown */}
+            {isSortOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsSortOpen(false)} />
+                <div className="absolute right-0 top-8 z-50 bg-white border border-[#e2e8f0] rounded-md shadow-lg py-1 w-[110px] animate-scale-in text-[12px] flex flex-col text-slate-700">
+                  {[
+                    { id: 'asc', label: 'Ascending' },
+                    { id: 'desc', label: 'Descending' }
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      onClick={() => {
+                        setSortOrder(opt.id);
+                        setIsSortOpen(false);
+                      }}
+                      className="w-full px-3 py-2 flex items-center justify-between text-left hover:bg-slate-50 transition-colors font-medium text-slate-600 hover:text-slate-900"
+                    >
+                      <span>{opt.label}</span>
+                      {sortOrder === opt.id && (
+                        <Check size={13} className="text-indigo-600 stroke-[2.5]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -73,8 +194,8 @@ export function NotificationList({ notifications = [], onSelectChat, contacts = 
               </div>
             ))}
           </div>
-        ) : displayNotifications.length > 0 ? (
-          displayNotifications.map(n => (
+        ) : sortedNotifications.length > 0 ? (
+          sortedNotifications.map(n => (
             <div
               key={n.id}
               onClick={() => handleNotificationClick(n)}

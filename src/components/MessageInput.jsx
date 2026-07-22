@@ -57,7 +57,7 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
   const [isEmpty, setIsEmpty]     = useState(true);
   const [pendingFiles, setPendingFiles] = useState([]);
   
-  const { setChatAlert, editingMessage, setEditingMessage, handleEditMessage, quoteMessage, setQuoteMessage } = useChat();
+  const { setChatAlert, editingMessage, setEditingMessage, handleEditMessage, quoteMessage, setQuoteMessage, allMessages, setShowEditTimeLimitModal } = useChat();
 
   // Prefill contentEditable editor when editing a message
   useEffect(() => {
@@ -247,6 +247,26 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
   };
 
   const onKey = (e) => {
+    if (e.key === 'ArrowUp' && isEmpty) {
+      e.preventDefault();
+      const myMessages = (allMessages || []).filter(m => m.senderId === 'me' && m.type === 'text' && !m.isDeleted);
+      if (myMessages.length > 0) {
+        const lastMsg = myMessages[myMessages.length - 1];
+        
+        const createdAtTime = new Date(lastMsg.createdAt).getTime();
+        const currentTime = Date.now();
+        const diffMs = currentTime - createdAtTime;
+        const diffMins = diffMs / 1000 / 60;
+        
+        if (diffMins > 5) {
+          setShowEditTimeLimitModal(true);
+        } else {
+          setEditingMessage(lastMsg);
+        }
+      }
+      return;
+    }
+
     // If Ctrl+B or Ctrl+I is clicked, check formats on next tick
     if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'i')) {
       setTimeout(checkActiveFormats, 0);

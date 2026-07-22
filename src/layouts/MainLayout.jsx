@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
@@ -18,9 +19,11 @@ import { FilesSidebar } from '../components/chat/FilesSidebar';
 import { FileViewer } from '../components/chat/FileViewer';
 import { Login } from '../components/Login';
 import { ForwardSidebar } from '../components/chat/ForwardSidebar';
+import { UserProfileDrawer } from '../components/chat/UserProfileDrawer';
 
 export function MainLayout() {
   const { session, authLoading } = useAuth();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const {
     activeNav, setActiveNav,
@@ -36,7 +39,8 @@ export function MainLayout() {
     chatAlert, setChatAlert,
     isSearchOpen, setIsSearchOpen,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus,
-    forwardingMessage
+    forwardingMessage,
+    showEditTimeLimitModal, setShowEditTimeLimitModal
   } = useChat();
 
   if (authLoading) {
@@ -172,6 +176,7 @@ export function MainLayout() {
           onNavChange={setActiveNav}
           currentUser={currentUser}
           unreadNotifications={notifications.length > 0 ? notifications.filter(n => !n.isRead).length : undefined}
+          onOpenProfile={() => setIsProfileOpen(true)}
         />
       </div>
 
@@ -358,6 +363,48 @@ export function MainLayout() {
 
       {/* File Viewer Modal Overlay */}
       {viewingFile && <FileViewer file={viewingFile} onClose={() => setViewingFile(null)} />}
+
+      {/* User Profile Drawer */}
+      <UserProfileDrawer 
+        isOpen={isProfileOpen} 
+        onClose={() => setIsProfileOpen(false)} 
+        currentUser={currentUser} 
+      />
+
+      {/* Edit Message Time Limit Exceeded Modal Overlay */}
+      {showEditTimeLimitModal && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 backdrop-blur-[1.5px] animate-fade-in">
+          <div className="bg-white rounded-lg shadow-xl max-w-[340px] w-full mx-4 border border-slate-100 flex flex-col overflow-hidden animate-scale-in">
+            {/* Title Header */}
+            <div className="px-5 py-3.5 flex items-center justify-between border-b border-slate-100">
+              <span className="text-[#0f172a] font-bold text-[14px]">
+                Time limit has passed
+              </span>
+              <button 
+                onClick={() => setShowEditTimeLimitModal(false)}
+                className="w-6 h-6 rounded-full bg-blue-50 hover:bg-blue-100/80 text-blue-500 hover:text-blue-600 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <span className="text-[11px] font-bold leading-none">✕</span>
+              </button>
+            </div>
+            
+            {/* Content Body */}
+            <div className="px-6 py-8 text-center">
+              <p className="text-[13px] text-slate-500 font-medium leading-relaxed">
+                You had 5 minutes to edit. Your time has expired, and editing is no longer possible.
+              </p>
+            </div>
+            
+            {/* Bottom OK button */}
+            <button 
+              onClick={() => setShowEditTimeLimitModal(false)}
+              className="w-full bg-[#eaeaea] hover:bg-[#dddddd] text-[#555555] font-bold text-[13px] py-3.5 text-center cursor-pointer transition-colors border-t border-[#e2e8f0]"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

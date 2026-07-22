@@ -7,13 +7,13 @@ import { Avatar } from './ui/Avatar';
 import { supabase } from '../lib/supabase';
 
 const NAV = [
-  { id: 'chats',          icon: MessageSquare,  label: 'Messages' },
-  { id: 'notifications',  icon: Bell,            label: 'Notifications' },
-  { id: 'starred',        icon: Star,            label: 'Starred' },
-  { id: 'files',          icon: FolderOpen,      label: 'Files' },
+  { id: 'chats', icon: MessageSquare, label: 'Messages' },
+  { id: 'notifications', icon: Bell, label: 'Notifications' },
+  { id: 'starred', icon: Star, label: 'Starred' },
+  { id: 'files', icon: FolderOpen, label: 'Files' },
 ];
 
-export function Sidebar({ activeNav, onNavChange, currentUser, unreadNotifications = 0 }) {
+export function Sidebar({ activeNav, onNavChange, currentUser, unreadNotifications = 0, onOpenProfile }) {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
   };
@@ -62,13 +62,17 @@ export function Sidebar({ activeNav, onNavChange, currentUser, unreadNotificatio
 
       {/* Bottom */}
       <div className="hidden md:flex flex-col items-center gap-2 w-full px-2 mt-auto">
-        <button title="Settings" className="nav-btn w-full">
+        {/* <button title="Settings" className="nav-btn w-full">
           <Settings size={18} strokeWidth={1.8} />
-        </button>
+        </button> */}
         <button title="Sign Out" onClick={handleSignOut} className="nav-btn w-full hover:text-red-500">
           <LogOut size={18} strokeWidth={1.8} />
         </button>
-        <div className="mt-1 cursor-pointer hover:opacity-90 transition-opacity">
+        <button 
+          title="My Profile"
+          onClick={onOpenProfile} 
+          className="mt-1 cursor-pointer hover:opacity-90 transition-opacity focus:outline-none shrink-0"
+        >
           {currentUser && (
             <Avatar
               initials={currentUser.initials}
@@ -78,7 +82,7 @@ export function Sidebar({ activeNav, onNavChange, currentUser, unreadNotificatio
               borderColor="#ffffff"
             />
           )}
-        </div>
+        </button>
       </div>
     </aside>
   );
