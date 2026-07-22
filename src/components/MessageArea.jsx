@@ -194,7 +194,7 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
     <div className="flex-1 flex flex-col min-h-0 bg-white relative">
       {/* Inline Search Bar */}
       {isSearchOpen && (
-        <div className="absolute top-0 left-0 right-0 bg-white border-b border-[#e2e8f0] z-10 px-4 py-2 flex items-center shadow-sm animate-fade-in">
+        <div className="absolute top-0 left-0 right-0 bg-white border-b border-[#e2e8f0] z-50 px-4 py-2 flex items-center shadow-sm animate-fade-in">
           <Search size={16} className="text-[#94a3b8]" />
           <input
             autoFocus
