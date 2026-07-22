@@ -184,6 +184,22 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
     }
   }, [isFetchingChat, contact?.roomId, flattenedItems.length]);
 
+  // Scroll to reveal typing indicator if at bottom
+  useEffect(() => {
+    if (typingUsers?.length > 0 && isAtBottom && virtuosoRef.current && flattenedItems.length > 0) {
+      const timer = setTimeout(() => {
+        if (virtuosoRef.current) {
+          virtuosoRef.current.scrollToIndex({
+            index: flattenedItems.length - 1,
+            align: 'end',
+            behavior: 'smooth'
+          });
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [typingUsers, isAtBottom, flattenedItems.length]);
+
   const handleNextMatch = () => {
     setActiveMatchIndex(prev => (prev < matches.length - 1 ? prev + 1 : 0));
   };
