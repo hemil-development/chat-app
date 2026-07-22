@@ -888,7 +888,9 @@ export function ChatProvider({ children }) {
         setIsFetchingChat(false);
       }
 
-      markMessagesAsRead(currentContact.roomId);
+      if (document.visibilityState === 'visible' && document.hasFocus()) {
+        markMessagesAsRead(currentContact.roomId);
+      }
     }
 
     loadMessages();
@@ -958,7 +960,7 @@ export function ChatProvider({ children }) {
               });
 
               if (m.created_by !== companyUserId) {
-                if (document.visibilityState === 'visible') {
+                if (document.visibilityState === 'visible' && document.hasFocus()) {
                   markMessagesAsRead(currentContact.roomId);
                 }
               }
@@ -1053,17 +1055,25 @@ export function ChatProvider({ children }) {
     }
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && currentContact?.roomId) {
+      if (document.visibilityState === 'visible' && document.hasFocus() && currentContact?.roomId) {
         markMessagesAsRead(currentContact.roomId);
       }
     };
+    const handleFocus = () => {
+      if (currentContact?.roomId) {
+        markMessagesAsRead(currentContact.roomId);
+      }
+    };
+    
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
 
     return () => {
       isMounted = false;
       activeChannelRef.current = null;
       if (channel) supabase.removeChannel(channel);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [currentContact?.roomId, currentContact?.id, companyUserId, markMessagesAsRead]);
 
