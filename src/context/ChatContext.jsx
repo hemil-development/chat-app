@@ -35,6 +35,7 @@ export function ChatProvider({ children }) {
   const [editingMessage, setEditingMessage] = useState(null);
   const [quoteMessage, setQuoteMessage] = useState(null);
   const [forwardingMessage, setForwardingMessage] = useState(null);
+  const [uploadingFiles, setUploadingFiles] = useState([]);
   const [isFetchingChat, setIsFetchingChat] = useState(true);
   const [scrollToMessageId, setScrollToMessageId] = useState(null);
   const [showEditTimeLimitModal, setShowEditTimeLimitModal] = useState(false);
@@ -485,9 +486,12 @@ export function ChatProvider({ children }) {
 
       if (files && files.length > 0) {
         for (const file of files) {
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${companyUserId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-          const filePath = `chat_documents/${fileName}`;
+          const fileId = Math.random().toString(36).substring(2);
+          setUploadingFiles(prev => [...prev, { id: fileId, name: file.name, size: file.size }]);
+          try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${companyUserId}/${Date.now()}-${fileId}.${fileExt}`;
+            const filePath = `chat_documents/${fileName}`;
           
           const { error: uploadError } = await supabase.storage.from('chat').upload(filePath, file);
           if (uploadError) throw uploadError;
@@ -523,6 +527,9 @@ export function ChatProvider({ children }) {
               replyToMessageId: insertedMsg.reply_to_message_id,
             }];
           });
+          } finally {
+            setUploadingFiles(prev => prev.filter(f => f.id !== fileId));
+          }
         }
       }
 
@@ -743,10 +750,13 @@ export function ChatProvider({ children }) {
       }
 
       const fileExt = file.name.split('.').pop();
-      const fileName = `${companyUserId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const fileId = Math.random().toString(36).substring(2);
+      const fileName = `${companyUserId}/${Date.now()}-${fileId}.${fileExt}`;
       const filePath = `chat_documents/${fileName}`;
       
-      const { error: uploadError } = await supabase.storage.from('chat').upload(filePath, file);
+      setUploadingFiles(prev => [...prev, { id: fileId, name: file.name, size: file.size }]);
+      try {
+        const { error: uploadError } = await supabase.storage.from('chat').upload(filePath, file);
       if (uploadError) throw uploadError;
       
       const { data: { publicUrl } } = supabase.storage.from('chat').getPublicUrl(filePath, { download: file.name });
@@ -787,6 +797,9 @@ export function ChatProvider({ children }) {
         }
         return c;
       }));
+      } finally {
+        setUploadingFiles(prev => prev.filter(f => f.id !== fileId));
+      }
     } catch (err) {
       console.error("Error in handleFileUpload:", err);
       alert("Failed to upload file. Please try again.");
@@ -945,7 +958,9 @@ export function ChatProvider({ children }) {
               });
 
               if (m.created_by !== companyUserId) {
-                markMessagesAsRead(currentContact.roomId);
+                if (document.visibilityState === 'visible') {
+                  markMessagesAsRead(currentContact.roomId);
+                }
               }
             }
           }
@@ -1037,10 +1052,18 @@ export function ChatProvider({ children }) {
         .subscribe();
     }
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && currentContact?.roomId) {
+        markMessagesAsRead(currentContact.roomId);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       isMounted = false;
       activeChannelRef.current = null;
       if (channel) supabase.removeChannel(channel);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [currentContact?.roomId, currentContact?.id, companyUserId, markMessagesAsRead]);
 
@@ -1250,6 +1273,63 @@ export function ChatProvider({ children }) {
               }
             });
           }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'chat_messages' },
+        (payload) => {
+          const m = payload.new;
+          setContacts(prev => {
+            const updated = prev.map(c => {
+              if (c.roomId === m.room_id && c.rawTimestamp === m.created_at) {
+                let isForwarded = m.is_forwarded || false;
+                let text = m.message;
+                if (m.type === 'file') {
+                  try {
+                    const fileMeta = typeof m.message === 'string' ? JSON.parse(m.message) : m.message;
+                    const isImg = fileMeta?.type?.startsWith('image/');
+                    text = `sent a ${isImg ? 'image' : 'file'}`;
+                  } catch (e) {
+                    text = 'sent a file';
+                  }
+                } else {
+                  if (!isForwarded && text) {
+                    try {
+                      const parsed = JSON.parse(text);
+                      if (parsed && typeof parsed === 'object' && 'isForwarded' in parsed) {
+                        text = parsed.text || '';
+                        isForwarded = true;
+                      }
+                    } catch (e) {
+                      if (text && text.startsWith('[Forwarded]\n')) {
+                        text = text.substring(12);
+                        isForwarded = true;
+                      }
+                    }
+                  }
+                  text = (text || '')
+                    .replace(/\*([^*]+)\*/g, '$1')
+                    .replace(/_([^_]+)_/g, '$1');
+                }
+                
+                if (c.isChannel) {
+                  const sender = prev.find(x => x.id === m.created_by) || (m.created_by === companyUserId ? currentUser : null);
+                  const senderName = sender ? (m.created_by === companyUserId ? 'You' : sender.name.split(' ')[0]) : 'Someone';
+                  text = `${senderName}: ${text}`;
+                } else if (m.created_by === companyUserId) {
+                  text = `You: ${text}`;
+                }
+                
+                return {
+                  ...c,
+                  lastMessage: text,
+                };
+              }
+              return c;
+            });
+            return updated;
+          });
         }
       )
       .subscribe();
@@ -1669,6 +1749,7 @@ export function ChatProvider({ children }) {
     forwardingMessage, setForwardingMessage,
     isFetchingChat, setIsFetchingChat,
     scrollToMessageId, setScrollToMessageId,
+    uploadingFiles,
     markNotificationAsRead, markAllNotificationsAsRead,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup, handleToggleReaction,
     handleEditMessage, handleDeleteMessage, handleToggleStar, handleForwardMessage, handleTogglePin, handleAddParticipantToGroup

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Edit } from 'lucide-react';
+import { Search, Edit, X } from 'lucide-react';
 import clsx from 'clsx';
 import { ConvItem } from './chat/ConvItem';
 import { CreateGroupModal } from './chat/CreateGroupModal';
@@ -55,6 +55,14 @@ export function ChatList({ contacts = [], activeContactId, onSelectContact }) {
             className="flex-1 bg-transparent text-[13px] text-[#0f172a] placeholder:text-[#94a3b8]
                        outline-none min-w-0"
           />
+          {query.length > 0 && (
+            <button 
+              onClick={() => setQuery('')}
+              className="text-[#94a3b8] hover:text-[#475569] transition-colors flex-shrink-0 focus:outline-none"
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
 
         {/* Tabs */}

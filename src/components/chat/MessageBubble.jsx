@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import { FileCard } from './FileCard';
-import { Smile, ChevronLeft, ChevronRight, MoreVertical, Pencil, Quote, Share2, Copy, Star, Trash2, CornerUpRight, Pin, Reply } from 'lucide-react';
+import { Smile, ChevronLeft, ChevronRight, MoreVertical, Pencil, Quote, Share2, Copy, Star, Trash2, CornerUpRight, Pin, Reply, X } from 'lucide-react';
 import { useChat } from '../../context/ChatContext';
 import { Emoji } from 'emoji-picker-react';
 
@@ -159,6 +160,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
   const [hoveredReaction, setHoveredReaction] = useState(null);
   const [menuDirection, setMenuDirection] = useState('down'); // 'up' or 'down'
   const [menuPos, setMenuPos] = useState(null); // { x, y }
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Close context menu and reactions popover when clicking anywhere else or scrolling
   useEffect(() => {
@@ -260,6 +262,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
     <div className={clsx("flex items-center gap-1 mt-0.5 select-none pointer-events-none px-1", isMe ? "self-end" : "self-start")}>
       <span className="text-[9px] tabular-nums font-semibold flex items-center gap-0.5 text-slate-400">
         {message.timestamp}
+        {message.isEdited && <span className="italic ml-0.5">(edited)</span>}
         {message.isStarred && (
           <Star size={9} className="text-amber-400 fill-amber-400 shrink-0 ml-0.5" />
         )}
@@ -464,6 +467,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
         <div className="absolute bottom-1 right-2.5 flex items-center gap-1 select-none pointer-events-none">
           <span className={clsx('text-[9px] tabular-nums font-semibold flex items-center gap-0.5', isMe ? 'text-indigo-200/80' : 'text-slate-400')}>
             {message.timestamp}
+            {message.isEdited && <span className="italic ml-0.5">(edited)</span>}
             {message.isStarred && (
               <Star size={9} className="text-amber-400 fill-amber-400 shrink-0 ml-0.5" />
             )}
@@ -566,8 +570,9 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
 
       {isMe && (
         <button
-          onClick={() => {
-            handleDeleteMessage(message.id);
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowDeleteConfirm(true);
             setShowMenu(false);
           }}
           className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[12px] text-[#ef4444] hover:bg-red-50/50 transition-colors font-semibold border-t border-slate-100 mt-0.5"
@@ -750,6 +755,48 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
 
       {/* Right-click Context Dropdown */}
       {menuPos && dropdownMenuNode}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-[400px] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-[15px] font-bold text-slate-800">Delete Message</h3>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(false); }}
+                className="w-7 h-7 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-100 transition-colors"
+              >
+                <X size={14} strokeWidth={2.5} />
+              </button>
+            </div>
+            <div className="p-8 flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-5">
+                <Trash2 size={28} className="text-[#ef4444] fill-[#ef4444]" />
+              </div>
+              <p className="text-[14px] text-slate-500 font-medium">Are you sure you want to delete this message?</p>
+            </div>
+            <div className="flex bg-slate-100/50 p-0 m-0">
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(false); }}
+                className="flex-1 py-3 text-[14px] font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 transition-colors border-none cursor-pointer bg-slate-200/40"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  handleDeleteMessage(message.id); 
+                  setShowDeleteConfirm(false); 
+                }}
+                className="flex-1 py-3 text-[14px] font-bold text-white bg-[#007eff] hover:bg-[#0066cc] transition-colors border-none cursor-pointer"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

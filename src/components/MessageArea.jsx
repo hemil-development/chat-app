@@ -41,7 +41,7 @@ function groupMessages(messages) {
 
 export function MessageArea({ messages, contact, currentUser, contacts = [], typingUsers = [], onViewFile, isSearchOpen, setIsSearchOpen }) {
   const virtuosoRef = useRef(null);
-  const { handleTogglePin, isFetchingChat, scrollToMessageId, setScrollToMessageId } = useChat();
+  const { handleTogglePin, isFetchingChat, scrollToMessageId, setScrollToMessageId, uploadingFiles } = useChat();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
@@ -184,9 +184,9 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
     }
   }, [isFetchingChat, contact?.roomId, flattenedItems.length]);
 
-  // Scroll to reveal typing indicator if at bottom
+  // Scroll to reveal typing indicator or uploading files if at bottom
   useEffect(() => {
-    if (typingUsers?.length > 0 && isAtBottom && virtuosoRef.current && flattenedItems.length > 0) {
+    if (((typingUsers && typingUsers.length > 0) || (uploadingFiles && uploadingFiles.length > 0)) && isAtBottom && virtuosoRef.current && flattenedItems.length > 0) {
       const timer = setTimeout(() => {
         if (virtuosoRef.current) {
           virtuosoRef.current.scrollToIndex({
@@ -198,7 +198,7 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [typingUsers, isAtBottom, flattenedItems.length]);
+  }, [typingUsers, uploadingFiles, isAtBottom, flattenedItems.length]);
 
   const handleNextMatch = () => {
     setActiveMatchIndex(prev => (prev < matches.length - 1 ? prev + 1 : 0));
@@ -320,19 +320,34 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
             components={{
               Header: () => <div className="h-4" />,
               Footer: () => {
-                if (typingUsers && typingUsers.length > 0) {
-                  return (
-                    <div className="flex items-end gap-3 px-6 py-2 pb-6 animate-fade-in">
-                      <Avatar initials={typingUsers[0].initials} color={typingUsers[0].color} size="sm" borderColor="#ffffff" />
-                      <div className="flex items-center gap-1.5 px-4 py-3 bg-[#f1f5f9] border border-[#e2e8f0] rounded-2xl rounded-bl-sm w-fit shadow-sm">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#94a3b8] animate-bounce-1" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#94a3b8] animate-bounce-2" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#94a3b8] animate-bounce-3" />
+                return (
+                  <>
+                    {uploadingFiles && uploadingFiles.length > 0 && (
+                      <div className="flex flex-col gap-2 px-6 py-2 pb-6 animate-fade-in items-end">
+                        {uploadingFiles.map((file) => (
+                          <div key={file.id} className="flex flex-col items-start gap-2 px-4 py-3 bg-[#4f46e5]/10 border border-[#4f46e5]/20 text-[#4f46e5] rounded-2xl rounded-tr-sm w-fit max-w-[70%] shadow-sm">
+                            <div className="flex items-center gap-2">
+                              <div className="w-4 h-4 border-2 border-[#4f46e5]/30 border-t-[#4f46e5] rounded-full animate-spin shrink-0" />
+                              <span className="text-[13px] font-medium truncate">{file.name}</span>
+                            </div>
+                            <span className="text-[10px] opacity-70">Uploading...</span>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  );
-                }
-                return <div className="h-6" />;
+                    )}
+                    {typingUsers && typingUsers.length > 0 && (
+                      <div className="flex items-end gap-3 px-6 py-2 pb-6 animate-fade-in">
+                        <Avatar initials={typingUsers[0].initials} color={typingUsers[0].color} size="sm" borderColor="#ffffff" />
+                        <div className="flex items-center gap-1.5 px-4 py-3 bg-[#f1f5f9] border border-[#e2e8f0] rounded-2xl rounded-bl-sm w-fit shadow-sm">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#94a3b8] animate-bounce-1" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#94a3b8] animate-bounce-2" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#94a3b8] animate-bounce-3" />
+                        </div>
+                      </div>
+                    )}
+                    {(!uploadingFiles || uploadingFiles.length === 0) && (!typingUsers || typingUsers.length === 0) && <div className="h-6" />}
+                  </>
+                );
               }
             }}
             itemContent={(index, group) => {
