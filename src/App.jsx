@@ -15,8 +15,11 @@ export default function App() {
             <Route path="/chats" element={<MainLayout />} />
             <Route path="/chats/:chatId" element={<MainLayout />} />
             <Route path="/notifications" element={<MainLayout />} />
+            <Route path="/notifications/:chatId" element={<MainLayout />} />
             <Route path="/starred" element={<MainLayout />} />
+            <Route path="/starred/:chatId" element={<MainLayout />} />
             <Route path="/files" element={<MainLayout />} />
+            <Route path="/files/:chatId" element={<MainLayout />} />
             <Route path="*" element={<Navigate to="/chats" replace />} />
           </Routes>
         </ChatProvider>

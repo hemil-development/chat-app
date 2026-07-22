@@ -17,8 +17,9 @@ export function ChatProvider({ children }) {
   else if (location.pathname.startsWith('/files')) activeNav = 'files';
 
   let activeContactId = null;
-  if (location.pathname.startsWith('/chats/')) {
-    activeContactId = location.pathname.split('/')[2];
+  const pathParts = location.pathname.split('/');
+  if (pathParts.length > 2 && pathParts[2]) {
+    activeContactId = pathParts[2];
   }
 
   const [contacts,      setContacts]      = useState([]);
@@ -85,7 +86,13 @@ export function ChatProvider({ children }) {
   const activeContact = contacts.find(c => c.id === activeContactId) || null;
   const currentContact = activeContact;
 
-  const setActiveNav = useCallback((nav) => navigate(`/${nav}`), [navigate]);
+  const setActiveNav = useCallback((nav) => {
+    if (activeContactId) {
+      navigate(`/${nav}/${activeContactId}`);
+    } else {
+      navigate(`/${nav}`);
+    }
+  }, [navigate, activeContactId]);
   
   const activeRoomTypingUserIds = typingUsers[currentContact?.roomId] || [];
   const activeRoomTypingUsers = activeRoomTypingUserIds
@@ -409,9 +416,9 @@ export function ChatProvider({ children }) {
     setIsFetchingChat(true);
     setAllMessages([]);
     if (contact) {
-      navigate(`/chats/${contact.id}`);
+      navigate(`/${activeNav}/${contact.id}`);
     } else {
-      navigate(`/chats`);
+      navigate(`/${activeNav}`);
     }
     setContacts(prev => prev.map(c => {
       if (contact && (c.id === contact.id || (contact.roomId && c.roomId === contact.roomId))) {
@@ -420,7 +427,7 @@ export function ChatProvider({ children }) {
       return c;
     }));
     if (contact?.roomId) markMessagesAsRead(contact.roomId);
-  }, [markMessagesAsRead, navigate, activeContactId]);
+  }, [markMessagesAsRead, navigate, activeContactId, activeNav]);
 
   const setActiveContact = handleSelect;
 
