@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
-import { Check, CheckCheck, Search, X, ChevronUp, ChevronDown, Pin, Loader2 } from 'lucide-react';
+import { Check, CheckCheck, Search, X, ChevronUp, ChevronDown, Pin } from 'lucide-react';
 import clsx from 'clsx';
 import { Virtuoso } from 'react-virtuoso';
 import { Avatar } from './ui/Avatar';
@@ -167,6 +167,22 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
       }
     }
   }, [scrollToMessageId, isFetchingChat, flattenedItems, setScrollToMessageId]);
+
+  // Auto-scroll to bottom on initial chat load or room change
+  useEffect(() => {
+    if (!isFetchingChat && flattenedItems.length > 0 && virtuosoRef.current) {
+      const timer = setTimeout(() => {
+        if (virtuosoRef.current) {
+          virtuosoRef.current.scrollToIndex({
+            index: flattenedItems.length - 1,
+            align: 'end',
+            behavior: 'auto'
+          });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isFetchingChat, contact?.roomId, flattenedItems.length]);
 
   const handleNextMatch = () => {
     setActiveMatchIndex(prev => (prev < matches.length - 1 ? prev + 1 : 0));
@@ -365,8 +381,36 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
             }}
           />
         ) : isFetchingChat ? (
-          <div className="flex-1 flex items-center justify-center h-full">
-            <Loader2 className="animate-spin text-[#94a3b8] w-6 h-6" />
+          <div className="flex-1 overflow-hidden space-y-4 px-6 py-6">
+            {[
+              { isMe: false, w: 'w-[45%]' },
+              { isMe: true, w: 'w-[30%]' },
+              { isMe: false, w: 'w-[60%]' },
+              { isMe: false, w: 'w-[20%]' },
+              { isMe: true, w: 'w-[40%]' },
+            ].map((item, idx) => (
+              <div 
+                key={idx} 
+                className={clsx(
+                  "flex items-end gap-3",
+                  item.isMe && "flex-row-reverse"
+                )}
+              >
+                {!item.isMe && (
+                  <div className="w-8 h-8 rounded-full shimmer shrink-0" />
+                )}
+                <div className="flex flex-col gap-1 w-full max-w-full">
+                  {!item.isMe && (
+                    <div className="w-20 h-3 shimmer rounded-sm mb-1" />
+                  )}
+                  <div className={clsx(
+                    "h-16 shimmer rounded-2xl",
+                    item.w,
+                    item.isMe ? "rounded-tr-sm bg-indigo-50/50" : "rounded-tl-sm bg-slate-50/50"
+                  )} />
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="h-full flex items-center justify-center text-slate-400">
