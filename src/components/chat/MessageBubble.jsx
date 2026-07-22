@@ -583,7 +583,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
     <div 
       onContextMenu={handleContextMenu}
       className={clsx(
-        "relative flex items-center gap-2 group/bubble max-w-full transition-all", 
+        "relative flex items-start gap-2 group/bubble max-w-full transition-all", 
         isMe ? "flex-row-reverse self-end" : "flex-row self-start",
         (showMenu || showPopover) ? "z-[60]" : "z-10"
       )}>
@@ -592,7 +592,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
 
       {/* Smiley Hover Reaction Trigger Button & Action Dropdown Trigger */}
       <div className={clsx(
-        "relative transition-opacity flex-shrink-0 flex items-center gap-1 z-30",
+        "relative transition-opacity flex-shrink-0 flex items-center gap-1 z-30 mt-2",
         (showMenu || showPopover) ? "opacity-100" : "opacity-0 group-hover/bubble:opacity-100"
       )}>
 

@@ -268,6 +268,7 @@ export function ChatProvider({ children }) {
               unread: getUnreadCountForRoom(r.id),
               pinned: false,
               isChannel: true,
+              participants: r.participants,
             };
           });
 
@@ -1620,6 +1621,34 @@ export function ChatProvider({ children }) {
     }
   };
 
+  const handleAddParticipantToGroup = async (roomId, userId) => {
+    try {
+      const room = contacts.find(c => c.roomId === roomId);
+      if (!room || !room.isChannel) return;
+      
+      const updatedParticipants = [...(room.participants || []), userId];
+      
+      const { error } = await supabase
+        .from('chat_rooms')
+        .update({ participants: updatedParticipants })
+        .eq('id', roomId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setContacts(prev => prev.map(c => 
+        c.roomId === roomId 
+          ? { ...c, participants: updatedParticipants }
+          : c
+      ));
+      
+      setChatAlert({ type: 'success', message: 'User added to chat' });
+    } catch (err) {
+      console.error("Error adding participant:", err);
+      setChatAlert({ type: 'error', message: 'Failed to add user to chat' });
+    }
+  };
+
   const value = {
     companyUserId,
     activeNav, setActiveNav,
@@ -1642,7 +1671,7 @@ export function ChatProvider({ children }) {
     scrollToMessageId, setScrollToMessageId,
     markNotificationAsRead, markAllNotificationsAsRead,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup, handleToggleReaction,
-    handleEditMessage, handleDeleteMessage, handleToggleStar, handleForwardMessage, handleTogglePin
+    handleEditMessage, handleDeleteMessage, handleToggleStar, handleForwardMessage, handleTogglePin, handleAddParticipantToGroup
   };
 
   return (

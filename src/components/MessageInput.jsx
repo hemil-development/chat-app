@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Paperclip, Smile, Send, AtSign, Bold, Italic, X } from 'lucide-react';
+import { Paperclip, Smile, Send, AtSign, Bold, Italic, X, ChevronDown, UserPlus } from 'lucide-react';
 import { IconButton } from './ui/IconButton';
 import { Avatar } from './ui/Avatar';
 import clsx from 'clsx';
@@ -56,8 +56,15 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
   const [isTyping, setIsTyping]   = useState(false);
   const [isEmpty, setIsEmpty]     = useState(true);
   const [pendingFiles, setPendingFiles] = useState([]);
+  const [openAddMenuId, setOpenAddMenuId] = useState(null);
   
-  const { setChatAlert, editingMessage, setEditingMessage, handleEditMessage, quoteMessage, setQuoteMessage, allMessages, setShowEditTimeLimitModal } = useChat();
+  const { currentContact, handleAddParticipantToGroup, setChatAlert, editingMessage, setEditingMessage, handleEditMessage, quoteMessage, setQuoteMessage, allMessages, setShowEditTimeLimitModal } = useChat();
+
+  const isUserInChat = (userId) => {
+    if (!currentContact?.isChannel) return true;
+    if (!currentContact?.participants) return true;
+    return currentContact.participants.includes(userId);
+  };
 
   // Prefill contentEditable editor when editing a message
   useEffect(() => {
@@ -360,6 +367,34 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
                   <p className="truncate font-semibold">{user.name}</p>
                   <p className="text-[10px] text-[#94a3b8] truncate leading-none mt-0.5">{user.role}</p>
                 </div>
+                {!isUserInChat(user.id) && (
+                  <div className="flex items-center gap-1.5 ml-2 relative">
+                    <button 
+                      onClick={(e) => {
+                         e.stopPropagation();
+                         setOpenAddMenuId(openAddMenuId === user.id ? null : user.id);
+                      }}
+                      className="flex items-center gap-1 text-[10px] text-[#94a3b8] hover:text-[#64748b] bg-slate-50 px-1.5 py-0.5 rounded border border-[#e2e8f0] transition-colors"
+                    >
+                      Not in chat <ChevronDown size={10} />
+                    </button>
+                    {openAddMenuId === user.id && (
+                       <div className="absolute top-full right-0 mt-1 bg-white border border-[#e2e8f0] shadow-lg rounded-lg py-1 z-[60] w-[140px] animate-scale-in">
+                         <button
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             handleAddParticipantToGroup(currentContact.roomId, user.id);
+                             setOpenAddMenuId(null);
+                           }}
+                           className="w-full px-3 py-1.5 flex items-center justify-between text-[11px] font-medium text-[#0f172a] hover:bg-[#f8fafc] transition-colors"
+                         >
+                           Add to chat
+                           <UserPlus size={12} className="text-[#94a3b8]" />
+                         </button>
+                       </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
