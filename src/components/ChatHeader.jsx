@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Star, FolderOpen, MessageSquare, Search, ChevronLeft } from 'lucide-react';
 import clsx from 'clsx';
 import { Avatar } from './ui/Avatar';
 import { ContactDetailsDrawer } from './chat/ContactDetailsDrawer';
 import { useChat } from '../context/ChatContext';
+import { supabase } from '../lib/supabase';
 
 const TABS = [
   { id: 'chat',    icon: MessageSquare, label: 'Chat'    },
@@ -16,9 +17,74 @@ const STATUS_COLOR = { online: 'text-[#2eb67d]', busy: 'text-[#e01e5a]', away: '
 
 export function ChatHeader({ contact, activeTab, onTabChange }) {
   const [showDetails, setShowDetails] = useState(false);
-  const { isSearchOpen, setIsSearchOpen, setActiveContact } = useChat();
+  const { isSearchOpen, setIsSearchOpen, setActiveContact, onlineUsers } = useChat();
+  const [lastSeen, setLastSeen] = useState(null);
+  const [hrmsStatus, setHrmsStatus] = useState(null);
+
+  useEffect(() => {
+    if (!contact || contact.isChannel) return;
+
+    let isMounted = true;
+    async function fetchUserData() {
+      try {
+        const { data: user } = await supabase
+          .from('company_users')
+          .select('last_seen')
+          .eq('id', contact.id)
+          .single();
+        
+        if (isMounted && user?.last_seen) {
+          setLastSeen(user.last_seen);
+        }
+
+        const { data: att } = await supabase
+          .from('attendance')
+          .select('status')
+          .eq('company_user_id', contact.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (isMounted && att && att.length > 0) {
+          setHrmsStatus(att[0].status);
+        } else if (isMounted) {
+          setHrmsStatus('Not Clocked In');
+        }
+      } catch (err) {
+        console.error("Error fetching presence/HRMS info:", err);
+      }
+    }
+
+    fetchUserData();
+
+    // Optionally set up realtime subscriptions for these tables here
+    return () => { isMounted = false; };
+  }, [contact]);
 
   if (!contact) return null;
+
+  const isOnline = contact.isChannel ? false : (onlineUsers && onlineUsers[contact.id]);
+
+  let displayStatus = '';
+  if (contact.isChannel) {
+    displayStatus = `${contact.name} · Channel`;
+  } else if (isOnline) {
+    displayStatus = 'Online';
+  } else {
+    if (lastSeen) {
+       displayStatus = `Last seen at ${new Date(lastSeen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+    } else {
+       displayStatus = 'Offline';
+    }
+  }
+
+  const getHrmsBadgeColor = (status) => {
+    switch ((status || '').toLowerCase()) {
+      case 'clocked in': return 'bg-emerald-100 text-emerald-700';
+      case 'clocked out': return 'bg-red-100 text-red-700';
+      case 'on break': return 'bg-amber-100 text-amber-700';
+      default: return 'bg-slate-100 text-slate-600';
+    }
+  };
 
   return (
     <div className="flex flex-col border-b border-[#e2e8f0] bg-white flex-shrink-0">
@@ -58,11 +124,16 @@ export function ChatHeader({ contact, activeTab, onTabChange }) {
               </>
             )}
           </div>
-          <p className={clsx('text-[11px] font-medium mt-0.5', STATUS_COLOR[contact.status] ?? 'text-[#94a3b8]')}>
-            {contact.isChannel
-              ? `${contact.name} · Channel`
-              : (contact.lastSeen || STATUS_LABEL[contact.status])}
-          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className={clsx('text-[11px] font-medium', isOnline ? 'text-[#2eb67d]' : 'text-[#94a3b8]')}>
+              {displayStatus}
+            </p>
+            {!contact.isChannel && hrmsStatus && (
+              <span className={clsx("px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold uppercase tracking-wider", getHrmsBadgeColor(hrmsStatus))}>
+                {hrmsStatus}
+              </span>
+            )}
+          </div>
         </div>
         </div>
         </div>

@@ -39,6 +39,8 @@ export function ChatProvider({ children }) {
   const [isFetchingChat, setIsFetchingChat] = useState(true);
   const [scrollToMessageId, setScrollToMessageId] = useState(null);
   const [showEditTimeLimitModal, setShowEditTimeLimitModal] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState({});
+  const presenceChannelRef = useRef(null);
 
   // Clear temporary message states when switching chats
   useEffect(() => {
@@ -118,6 +120,30 @@ export function ChatProvider({ children }) {
   // Load initial data
   useEffect(() => {
     if (!companyUserId) return;
+
+    const updateLastSeen = () => {
+      supabase
+        .from('company_users')
+        .update({ last_seen: new Date().toISOString() })
+        .eq('id', companyUserId)
+        .then(() => {});
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') updateLastSeen();
+    };
+
+    window.addEventListener('beforeunload', updateLastSeen);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      window.removeEventListener('beforeunload', updateLastSeen);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [companyUserId]);
+
+  useEffect(() => {
+    if (!companyUserId) return;
     async function loadData() {
       try {
         setLoading(true);
@@ -137,6 +163,27 @@ export function ChatProvider({ children }) {
           role: 'Python Department',
         };
 
+        // Presence Setup
+        if (!presenceChannelRef.current) {
+          const channel = supabase.channel('online-users');
+          presenceChannelRef.current = channel;
+          
+          channel
+            .on('presence', { event: 'sync' }, () => {
+              const state = channel.presenceState();
+              const online = {};
+              for (const [key, presences] of Object.entries(state)) {
+                online[key] = true;
+              }
+              setOnlineUsers(online);
+            })
+            .subscribe(async (status) => {
+              if (status === 'SUBSCRIBED') {
+                await channel.track({ online_at: new Date().toISOString() }, { user_id: companyUserId });
+              }
+            });
+        }
+        
         if (hemilData && hemilData.users) {
           resolvedCurrentUser = {
             id: hemilData.id,
@@ -1057,6 +1104,9 @@ export function ChatProvider({ children }) {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && document.hasFocus() && currentContact?.roomId) {
         markMessagesAsRead(currentContact.roomId);
+        if (presenceChannelRef.current) {
+            presenceChannelRef.current.track({ online_at: new Date().toISOString() }, { user_id: companyUserId });
+        }
       }
     };
     const handleFocus = () => {
@@ -1760,6 +1810,7 @@ export function ChatProvider({ children }) {
     isFetchingChat, setIsFetchingChat,
     scrollToMessageId, setScrollToMessageId,
     uploadingFiles,
+    onlineUsers,
     markNotificationAsRead, markAllNotificationsAsRead,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup, handleToggleReaction,
     handleEditMessage, handleDeleteMessage, handleToggleStar, handleForwardMessage, handleTogglePin, handleAddParticipantToGroup
