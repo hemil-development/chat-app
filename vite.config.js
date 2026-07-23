@@ -16,27 +16,30 @@ export default defineConfig({
         theme_color: '#6366f1',
         background_color: '#ffffff',
         display: 'standalone',
+        start_url: '/',
+        scope: '/',
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: 'favicon.svg',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/svg+xml'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'favicon.svg',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/svg+xml'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'favicon.svg',
             sizes: '512x512',
-            type: 'image/png',
+            type: 'image/svg+xml',
             purpose: 'any maskable'
           }
         ]
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff,woff2}'],
+        navigateFallback: '/index.html',
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
