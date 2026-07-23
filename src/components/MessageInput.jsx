@@ -53,12 +53,14 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
   const editorRef                 = useRef(null);
   const fileInputRef              = useRef(null);
   const typingTimeoutRef          = useRef(null);
+  const lastTypingBroadcastRef    = useRef(0);
+  const textValueRef              = useRef('');
   const [isTyping, setIsTyping]   = useState(false);
   const [isEmpty, setIsEmpty]     = useState(true);
   const [pendingFiles, setPendingFiles] = useState([]);
   const [openAddMenuId, setOpenAddMenuId] = useState(null);
   
-  const { currentContact, handleAddParticipantToGroup, setChatAlert, editingMessage, setEditingMessage, handleEditMessage, quoteMessage, setQuoteMessage, allMessages, setShowEditTimeLimitModal } = useChat();
+  const { currentContact, handleAddParticipantToGroup, setChatAlert, editingMessage, setEditingMessage, handleEditMessage, quoteMessage, setQuoteMessage, allMessages, setShowEditTimeLimitModal, drafts, saveDraft } = useChat();
 
   const isUserInChat = (userId) => {
     if (!currentContact?.isChannel) return true;
@@ -66,7 +68,7 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
     return currentContact.participants.includes(userId);
   };
 
-  // Prefill contentEditable editor when editing a message
+  // Prefill contentEditable editor when editing a message or loading drafts
   useEffect(() => {
     if (editingMessage) {
       if (editorRef.current) {
@@ -83,12 +85,34 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
       }
     } else {
       if (editorRef.current) {
-        editorRef.current.innerHTML = '';
-        setIsEmpty(true);
-        editorRef.current.focus();
+        const draft = drafts[currentContact?.id] || '';
+        editorRef.current.innerText = draft;
+        textValueRef.current = draft;
+        setIsEmpty(draft.trim() === '');
+        if (draft) {
+          editorRef.current.focus();
+          const range = document.createRange();
+          const sel = window.getSelection();
+          range.selectNodeContents(editorRef.current);
+          range.collapse(false);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
       }
     }
-  }, [editingMessage]);
+  }, [editingMessage, currentContact?.id]);
+
+  // Save draft on unmount or when currentContact.id changes
+  useEffect(() => {
+    return () => {
+      if (currentContact?.id) {
+        const text = textValueRef.current;
+        if (!editingMessage) {
+          saveDraft(currentContact.id, text);
+        }
+      }
+    };
+  }, [currentContact?.id, editingMessage, saveDraft]);
 
   // Auto-focus editor when a reply (quote) is initiated
   useEffect(() => {
@@ -165,6 +189,10 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
 
     editor.innerHTML = '';
     setIsEmpty(true);
+    textValueRef.current = '';
+    if (!editingMessage && currentContact?.id) {
+      saveDraft(currentContact.id, '');
+    }
     setEmojiOpen(false);
     setMentionState(null);
     setIsBoldActive(false);
@@ -172,6 +200,7 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
     
     if (onTyping) onTyping(false);
     setIsTyping(false);
+    lastTypingBroadcastRef.current = 0;
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     
     editor.focus();
@@ -218,6 +247,7 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
 
   const handleInput = (e) => {
     const textContent = e.target.textContent || '';
+    textValueRef.current = textContent;
     setIsEmpty(textContent.trim() === '');
     
     // Check shortcuts
@@ -239,9 +269,12 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
     }
 
     if (onTyping) {
-      if (!isTyping) {
+      const now = Date.now();
+      const needsPing = !isTyping || (now - lastTypingBroadcastRef.current > 2000);
+      if (needsPing) {
         setIsTyping(true);
         onTyping(true);
+        lastTypingBroadcastRef.current = now;
       }
       
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -249,6 +282,7 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
       typingTimeoutRef.current = setTimeout(() => {
         setIsTyping(false);
         onTyping(false);
+        lastTypingBroadcastRef.current = 0;
       }, 3000);
     }
   };

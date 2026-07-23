@@ -39,6 +39,25 @@ export function ChatProvider({ children }) {
   const [isFetchingChat, setIsFetchingChat] = useState(true);
   const [scrollToMessageId, setScrollToMessageId] = useState(null);
   const [showEditTimeLimitModal, setShowEditTimeLimitModal] = useState(false);
+  const [drafts, setDrafts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('chat_drafts');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const saveDraft = useCallback((contactId, text) => {
+    setDrafts(prev => {
+      const updated = { ...prev, [contactId]: text };
+      try {
+        localStorage.setItem('chat_drafts', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  }, []);
+
   const [onlineUsers, setOnlineUsers] = useState({});
   const presenceChannelRef = useRef(null);
 
@@ -1820,6 +1839,7 @@ export function ChatProvider({ children }) {
     scrollToMessageId, setScrollToMessageId,
     uploadingFiles,
     onlineUsers,
+    drafts, saveDraft,
     markNotificationAsRead, markAllNotificationsAsRead,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup, handleToggleReaction,
     handleEditMessage, handleDeleteMessage, handleToggleStar, handleForwardMessage, handleTogglePin, handleAddParticipantToGroup
