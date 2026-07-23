@@ -22,7 +22,7 @@ export function PWAReloadPrompt() {
     setNeedRefresh(false);
   };
 
-  if (!offlineReady && !needRefresh) {
+  if (!needRefresh) {
     return null;
   }
 
@@ -38,31 +38,23 @@ export function PWAReloadPrompt() {
         </button>
 
         <div className="flex-shrink-0 bg-indigo-100 dark:bg-indigo-900/30 p-2 rounded-full">
-          {needRefresh ? (
-            <RefreshCw className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-          ) : (
-            <Download className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-          )}
+          <RefreshCw className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
         </div>
 
         <div className="flex-1 pr-4">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-            {needRefresh ? 'Update Available' : 'App Ready'}
+            Update Available
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-            {needRefresh
-              ? 'A new version of ChatFlow is available. Click reload to update.'
-              : 'ChatFlow has been downloaded and is ready to use offline.'}
+            A new version of ChatFlow is available. Click reload to update.
           </p>
           
-          {needRefresh && (
-            <button
-              className="w-full flex justify-center items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
-              onClick={() => updateServiceWorker(true)}
-            >
-              Reload App
-            </button>
-          )}
+          <button
+            className="w-full flex justify-center items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+            onClick={() => updateServiceWorker(true)}
+          >
+            Reload App
+          </button>
         </div>
       </div>
     </div>
