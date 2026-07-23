@@ -1,18 +1,12 @@
-import { useState, useEffect } from 'react';
-import { X, Mail, LogOut, Check } from 'lucide-react';
+import { Mail, LogOut, ChevronLeft, Phone, Power } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { supabase } from '../../lib/supabase';
 import { useChat } from '../../context/ChatContext';
-import clsx from 'clsx';
 
 export function UserProfileDrawer({ isOpen, onClose, currentUser }) {
-  const { 
-    setChatAlert 
-  } = useChat();
+  const { setChatAlert } = useChat();
 
   if (!isOpen || !currentUser) return null;
-
-
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -22,86 +16,88 @@ export function UserProfileDrawer({ isOpen, onClose, currentUser }) {
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 z-[80] bg-black/10 animate-fade-in backdrop-blur-[1px]"
+        className="fixed inset-0 z-[90] bg-black/20 animate-fade-in backdrop-blur-[1px]"
         onClick={onClose}
       />
       
       {/* Drawer Panel */}
-      <div className="fixed top-0 right-0 h-full w-full max-w-full md:max-w-[360px] z-[90] bg-[#f8fafc] shadow-2xl flex flex-col animate-slide-in-right border-l border-[#e2e8f0]">
+      <div className="fixed top-0 right-0 h-full w-full max-w-full md:max-w-[360px] z-[100] bg-[#f8fafc] shadow-2xl flex flex-col animate-slide-in-right border-l border-[#e2e8f0]">
         
-        {/* Scrollable Content Container */}
-        <div className="flex-1 overflow-y-auto bg-[#f8fafc] relative no-scrollbar">
-          
-          {/* Header Colored Banner */}
-          <div 
-            className="h-28 w-full flex justify-end p-4 relative"
-            style={{
-              backgroundColor: '#757c9a',
-              backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M11 11V7h2v4h4v2h-4v-4H7v-2h4z\' fill=\'%23ffffff\' fill-opacity=\'0.15\' fill-rule=\'evenodd\'/%3E%3C/svg%3E")'
-            }}
+        {/* Header Block */}
+        <div className="bg-[#007eff] pt-6 pb-6 px-4 flex flex-col items-center relative text-white">
+          {/* Back/Close Button */}
+          <button 
+            onClick={onClose}
+            className="absolute top-4 left-4 text-white hover:opacity-80 transition-opacity focus:outline-none bg-transparent border-none cursor-pointer"
           >
-            <button 
-              onClick={onClose}
-              className="w-7 h-7 flex items-center justify-center rounded-full bg-black/15 text-white hover:bg-black/25 border border-white/20 transition-all backdrop-blur-sm shadow-sm"
-            >
-              <X size={15} strokeWidth={2.5} />
-            </button>
+            <ChevronLeft size={24} strokeWidth={2.5} />
+          </button>
+          
+          {/* Avatar */}
+          <div className="mb-3 rounded-full bg-white/10 p-1">
+            <Avatar 
+              initials={currentUser.initials} 
+              color={currentUser.color} 
+              size="lg" 
+              borderColor="#ffffff"
+            />
+          </div>
+          
+          {/* Name */}
+          <h3 className="text-[17px] font-bold text-white text-center leading-tight">
+            {currentUser.name}
+          </h3>
+          
+          {/* Subtext */}
+          <p className="text-[12px] text-white/90 mt-1 font-semibold text-center uppercase tracking-wider">
+            {currentUser.role}
+          </p>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto bg-white relative no-scrollbar divide-y divide-slate-100">
+          
+          {/* Status Settings */}
+          <div className="py-1">
+            {/* Clock In */}
+            <div className="px-5 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 rounded-full bg-[#22c55e] flex items-center justify-center shrink-0" />
+                <span className="text-[13.5px] font-semibold text-slate-700">Clock In</span>
+              </div>
+            </div>
           </div>
 
-          {/* Overlapping Avatar Profile Block */}
-          <div className="bg-white px-6 pb-5 pt-0 flex flex-col items-center border-b border-[#e2e8f0]">
-            <div className="-mt-11 mb-2.5 rounded-full bg-white p-1 shadow-sm">
-              <Avatar 
-                initials={currentUser.initials} 
-                color={currentUser.color} 
-                size="lg" 
-                borderColor="#ffffff"
-              />
-            </div>
-            
-            <h3 className="text-[16px] font-bold text-[#0f172a] text-center leading-tight">
-              {currentUser.name}
-            </h3>
-            
-            <p className="text-[12px] text-[#64748b] mt-0.5 font-medium text-center">
-              {currentUser.role || 'Frontend Developer'}
-            </p>
-
-
-            {/* Email field */}
+          {/* User Details */}
+          <div className="py-2 space-y-1">
+            {/* Email */}
             {currentUser.email && (
-              <div className="flex items-center gap-2 mt-4 text-[#64748b] hover:text-[#0f172a] transition-colors cursor-pointer select-all">
-                <Mail size={13} className="text-slate-400 shrink-0" />
-                <span className="text-[11.5px] font-medium leading-none">{currentUser.email}</span>
+              <div className="px-5 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors">
+                <Mail size={16} className="text-slate-400 shrink-0" />
+                <span className="text-[13.5px] font-semibold text-slate-600 truncate">{currentUser.email}</span>
+              </div>
+            )}
+            
+            {/* Phone */}
+            {currentUser.mobile && (
+              <div className="px-5 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors">
+                <Phone size={16} className="text-slate-400 shrink-0" />
+                <span className="text-[13.5px] font-semibold text-slate-600">{currentUser.mobile}</span>
               </div>
             )}
           </div>
 
+          {/* Log Out Button */}
+          <div className="py-1">
+            <button 
+              onClick={handleSignOut}
+              className="w-full px-5 py-3 flex items-center gap-3 hover:bg-red-50/50 text-[#ef4444] transition-colors border-none text-left cursor-pointer bg-white"
+            >
+              <Power size={16} className="text-[#ef4444]" />
+              <span className="text-[13.5px] font-bold">Log Out</span>
+            </button>
+          </div>
 
-
-
-          {/* Organizations Section */}
-          {/* <div className="border-b border-[#e2e8f0]">
-            <div className="bg-slate-50/50 px-5 py-2 border-b border-[#e2e8f0]/60">
-              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Organizations</span>
-            </div>
-            <div className="bg-white px-6 py-3 flex items-center gap-2.5">
-              <Check size={14} className="text-[#22c55e] shrink-0 stroke-[2.5]" />
-              <span className="text-[12.5px] font-bold text-indigo-600">Digipie Technologies LLP</span>
-            </div>
-          </div> */}
-
-        </div>
-
-        {/* Footer Logout button */}
-        <div className="p-4 border-t border-[#e2e8f0] bg-white shrink-0">
-          <button 
-            onClick={handleSignOut}
-            className="w-full py-2 bg-red-50 hover:bg-red-100/60 border border-red-200 text-red-600 hover:text-red-700 rounded-lg text-[13px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-3xs cursor-pointer"
-          >
-            <LogOut size={14} />
-            Logout
-          </button>
         </div>
 
       </div>
