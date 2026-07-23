@@ -20,11 +20,13 @@ export function ChatHeader({ contact, activeTab, onTabChange }) {
   const { isSearchOpen, setIsSearchOpen, setActiveContact, onlineUsers } = useChat();
   const [lastSeen, setLastSeen] = useState(null);
   const [hrmsStatus, setHrmsStatus] = useState(null);
+  const [isLoadingPresence, setIsLoadingPresence] = useState(true);
 
   useEffect(() => {
     if (!contact || contact.isChannel) return;
 
     let isMounted = true;
+    setIsLoadingPresence(true);
     async function fetchUserData() {
       try {
         const { data: user } = await supabase
@@ -51,6 +53,8 @@ export function ChatHeader({ contact, activeTab, onTabChange }) {
         }
       } catch (err) {
         console.error("Error fetching presence/HRMS info:", err);
+      } finally {
+        if (isMounted) setIsLoadingPresence(false);
       }
     }
 
@@ -62,6 +66,23 @@ export function ChatHeader({ contact, activeTab, onTabChange }) {
 
   if (!contact) return null;
 
+  const formatLastSeen = (dateString) => {
+    if (!dateString) return 'Offline';
+    const date = new Date(dateString);
+    const now = new Date();
+    const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+    
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear();
+
+    const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    if (isToday) return `Last seen today at ${timeString}`;
+    if (isYesterday) return `Last seen yesterday at ${timeString}`;
+    return `Last seen ${date.toLocaleDateString([], { day: 'numeric', month: 'short', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined })} at ${timeString}`;
+  };
+
   const isOnline = contact.isChannel ? false : (onlineUsers && onlineUsers[contact.id]);
 
   let displayStatus = '';
@@ -69,12 +90,10 @@ export function ChatHeader({ contact, activeTab, onTabChange }) {
     displayStatus = `${contact.name} · Channel`;
   } else if (isOnline) {
     displayStatus = 'Online';
+  } else if (isLoadingPresence) {
+    displayStatus = 'Updating...';
   } else {
-    if (lastSeen) {
-       displayStatus = `Last seen at ${new Date(lastSeen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
-    } else {
-       displayStatus = 'Offline';
-    }
+    displayStatus = formatLastSeen(lastSeen);
   }
 
   const getHrmsBadgeColor = (status) => {

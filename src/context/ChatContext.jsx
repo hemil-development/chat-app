@@ -165,7 +165,13 @@ export function ChatProvider({ children }) {
 
         // Presence Setup
         if (!presenceChannelRef.current) {
-          const channel = supabase.channel('online-users');
+          const channel = supabase.channel('online-users', {
+            config: {
+              presence: {
+                key: companyUserId,
+              },
+            },
+          });
           presenceChannelRef.current = channel;
           
           channel
@@ -174,12 +180,15 @@ export function ChatProvider({ children }) {
               const online = {};
               for (const [key, presences] of Object.entries(state)) {
                 online[key] = true;
+                for (const p of presences) {
+                  if (p.user_id) online[p.user_id] = true;
+                }
               }
               setOnlineUsers(online);
             })
             .subscribe(async (status) => {
               if (status === 'SUBSCRIBED') {
-                await channel.track({ online_at: new Date().toISOString() }, { user_id: companyUserId });
+                await channel.track({ user_id: companyUserId, online_at: new Date().toISOString() });
               }
             });
         }
@@ -1105,7 +1114,7 @@ export function ChatProvider({ children }) {
       if (document.visibilityState === 'visible' && document.hasFocus() && currentContact?.roomId) {
         markMessagesAsRead(currentContact.roomId);
         if (presenceChannelRef.current) {
-            presenceChannelRef.current.track({ online_at: new Date().toISOString() }, { user_id: companyUserId });
+            presenceChannelRef.current.track({ user_id: companyUserId, online_at: new Date().toISOString() });
         }
       }
     };
