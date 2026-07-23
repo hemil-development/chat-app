@@ -382,6 +382,19 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
     <div className="px-6 pb-6 pt-2 bg-white flex-shrink-0">
       <div className="msg-box relative">
 
+        {/* Emoji Picker Dropdown */}
+        {emojiOpen && (
+          <div className="absolute bottom-full right-0 mb-2 z-50 animate-scale-in w-[320px] max-w-[calc(100vw-3rem)]">
+            <EmojiPicker
+              onEmojiClick={(emojiData) => addEmoji(emojiData.emoji)}
+              autoFocusSearch={false}
+              theme="light"
+              width="100%"
+              height={380}
+            />
+          </div>
+        )}
+
         {/* Mentions Dropdown */}
         {mentionState && filteredMentions.length > 0 && (
           <div className="absolute bottom-full left-4 mb-2 w-[240px] bg-white border border-[#e2e8f0]
@@ -561,25 +574,12 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
             />
             <IconButton icon={Paperclip}  title="Attach file" onClick={() => fileInputRef.current?.click()} />
             <IconButton icon={AtSign}     title="Mention"  onClick={triggerAtSymbol} />
-            <div className="relative">
-              <IconButton
-                icon={Smile}
-                title="Emoji"
-                onClick={() => setEmojiOpen(v => !v)}
-                active={emojiOpen}
-              />
-              {emojiOpen && (
-                <div className="absolute bottom-full left-0 mb-2 z-50">
-                  <EmojiPicker
-                    onEmojiClick={(emojiData) => addEmoji(emojiData.emoji)}
-                    autoFocusSearch={false}
-                    theme="light"
-                    width={320}
-                    height={400}
-                  />
-                </div>
-              )}
-            </div>
+            <IconButton
+              icon={Smile}
+              title="Emoji"
+              onClick={() => setEmojiOpen(v => !v)}
+              active={emojiOpen}
+            />
           </div>
 
           {/* Send / Mic */}

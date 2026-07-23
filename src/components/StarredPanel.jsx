@@ -110,7 +110,7 @@ export function StarredPanel() {
                   }}
                   className="flex items-start gap-4 p-4 bg-white border border-[#e2e8f0]
                              rounded-xl hover:border-[#cbd5e1] hover:shadow-sm transition-all duration-150
-                             cursor-pointer group"
+                             cursor-pointer group min-w-0"
                 >
                   <Avatar initials={sender?.initials} color={sender?.color} size="md" borderColor="#ffffff" />
 
