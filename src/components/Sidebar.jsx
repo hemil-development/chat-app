@@ -58,6 +58,23 @@ export function Sidebar({ activeNav, onNavChange, currentUser, unreadNotificatio
             </button>
           );
         })}
+
+        {/* Profile Avatar on Mobile */}
+        <button 
+          title="My Profile"
+          onClick={onOpenProfile} 
+          className="md:hidden nav-btn w-12 flex justify-center cursor-pointer focus:outline-none shrink-0"
+        >
+          {currentUser && (
+            <Avatar
+              initials={currentUser.initials}
+              color={currentUser.color}
+              status={currentUser.status}
+              size="sm"
+              borderColor="#ffffff"
+            />
+          )}
+        </button>
       </nav>
 
       {/* Bottom */}

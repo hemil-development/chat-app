@@ -222,6 +222,9 @@ export function ChatProvider({ children }) {
             role: hemilData.department || hemilData.designation || 'Python Department',
             avatar: hemilData.users.avatar_url,
             email: hemilData.users.email,
+            mobile: hemilData.users.mobile_number || '+91-6351266005',
+            country: hemilData.users.country || 'India',
+            organization: 'Digipie Technologies LLP',
           };
           setCurrentUser(resolvedCurrentUser);
         }
