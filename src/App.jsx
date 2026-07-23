@@ -2,6 +2,7 @@ import './index.css';
 import { AuthProvider } from './context/AuthContext';
 import { ChatProvider } from './context/ChatContext';
 import { MainLayout } from './layouts/MainLayout';
+import { PWAReloadPrompt } from './components/PWAReloadPrompt';
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
@@ -10,6 +11,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <ChatProvider>
+          <PWAReloadPrompt />
           <Routes>
             <Route path="/" element={<Navigate to="/chats" replace />} />
             <Route path="/chats" element={<MainLayout />} />
