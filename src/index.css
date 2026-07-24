@@ -48,7 +48,7 @@
 
   /* Conv item */
   .conv-item {
-    @apply flex items-center gap-2.5 px-2 py-[7px] rounded-lg mx-1.5
+    @apply flex items-center gap-3 px-2.5 py-[9px] rounded-lg mx-1.5
            cursor-pointer transition-all duration-100 select-none;
     color: #475569;
   }

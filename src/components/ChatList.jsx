@@ -89,14 +89,14 @@ export function ChatList({ contacts = [], activeContactId, onSelectContact }) {
         {loading ? (
           <div className="flex-1 overflow-hidden space-y-0.5 mt-2">
             {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-              <div key={i} className="flex items-center gap-2.5 px-2 py-[7px] mx-1.5">
+              <div key={i} className="flex items-center gap-3 px-2.5 py-[9px] mx-1.5">
                 <div className="w-8 h-8 rounded-full shimmer shrink-0" />
-                <div className="flex-1 min-w-0 ml-1 flex flex-col gap-1.5">
+                <div className="flex-1 min-w-0 ml-2 flex flex-col gap-2">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="w-24 h-3.5 shimmer rounded-sm" />
-                    <div className="w-8 h-2.5 shimmer rounded-sm" />
+                    <div className="w-24 h-4 shimmer rounded-sm" />
+                    <div className="w-8 h-3 shimmer rounded-sm" />
                   </div>
-                  <div className="w-3/4 h-3 shimmer rounded-sm" />
+                  <div className="w-3/4 h-3.5 shimmer rounded-sm" />
                 </div>
               </div>
             ))}
