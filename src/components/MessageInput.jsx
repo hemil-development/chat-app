@@ -6,6 +6,7 @@ import clsx from 'clsx';
 import EmojiPicker from 'emoji-picker-react';
 import { formatBytes } from '../utils/helpers';
 import { useChat } from '../context/ChatContext';
+import { useSearchParams } from 'react-router-dom';
 
 // DOM-traversal based HTML to Markdown converter
 function htmlToMarkdown(html) {
@@ -67,6 +68,47 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
     if (!currentContact?.participants) return true;
     return currentContact.participants.includes(userId);
   };
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Web Share Target Hook Integration
+  useEffect(() => {
+    if (searchParams.get('shared') === 'true') {
+      const request = indexedDB.open('ChatAppSharedFilesDB', 1);
+
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        
+        if (!db.objectStoreNames.contains('files')) return;
+
+        const tx = db.transaction('files', 'readonly');
+        const store = tx.objectStore('files');
+        
+        const getRequest = store.get('latest-shared-file');
+        
+        getRequest.onsuccess = () => {
+          const file = getRequest.result;
+          if (file) {
+            // Stage the shared file using the existing addFiles method
+            addFiles([file]);
+            
+            // Clean up the URL query param without adding to history
+            searchParams.delete('shared');
+            setSearchParams(searchParams, { replace: true });
+            
+            // Remove the file from IndexedDB to avoid processing it again
+            try {
+              const deleteTx = db.transaction('files', 'readwrite');
+              deleteTx.objectStore('files').delete('latest-shared-file');
+            } catch (e) {
+              console.error('Failed to clean up shared file from IndexedDB:', e);
+            }
+          }
+        };
+      };
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.get('shared')]);
 
   // Prefill contentEditable editor when editing a message or loading drafts
   useEffect(() => {

@@ -35,9 +35,26 @@ export default defineConfig({
             type: 'image/png',
             purpose: 'any maskable'
           }
-        ]
+        ],
+        share_target: {
+          action: '/_share-target',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: {
+            title: 'title',
+            text: 'text',
+            url: 'url',
+            files: [
+              {
+                name: 'file',
+                accept: ['image/*', 'video/*', 'audio/*', 'application/*']
+              }
+            ]
+          }
+        }
       },
       workbox: {
+        importScripts: ['sw-share-target.js'],
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff,woff2}'],
