@@ -279,7 +279,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
     const isImage = message.file?.type?.startsWith('image/');
     if (isImage && message.file?.url) {
       bubbleContent = (
-        <div className="flex flex-col items-start gap-1">
+        <div className="flex flex-col items-start gap-1 max-w-full">
           {message.isForwarded && (
             <div className="text-[10px] font-semibold text-slate-400 flex items-center gap-1 mb-1 pl-1 select-none">
               <CornerUpRight size={11} strokeWidth={2.5} />
@@ -304,7 +304,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
             id={`bubble-${message.id}`}
             onClick={() => onViewFile && onViewFile(message.file)}
             className={clsx(
-              'mt-1 cursor-pointer overflow-hidden rounded-xl animate-slide-up hover:opacity-90 transition-all border w-fit',
+              'mt-1 cursor-pointer overflow-hidden rounded-xl animate-slide-up hover:opacity-90 transition-all border max-w-full w-[260px]',
               isMe ? 'border-[#4338ca] shadow-sm' : 'border-[#e2e8f0] shadow-sm',
               isHighlighted && 'ring-2 ring-[#f59e0b] ring-offset-1 ring-offset-white'
             )}
@@ -312,7 +312,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
             <img
               src={message.file.url}
               alt={message.file.name}
-              className="max-w-[280px] max-h-[280px] object-cover block"
+              className="w-full h-auto max-h-[280px] object-cover block"
             />
           </div>
           {attachmentMetaNode}
@@ -342,7 +342,7 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
       );
     } else {
       bubbleContent = (
-        <div className="flex flex-col items-start gap-1">
+        <div className="flex flex-col items-start gap-1 max-w-full">
           {message.isForwarded && (
             <div className="text-[10px] font-semibold text-slate-400 flex items-center gap-1 mb-1 pl-1 select-none">
               <CornerUpRight size={11} strokeWidth={2.5} />
