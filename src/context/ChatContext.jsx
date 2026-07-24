@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback } f
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { getUserColor, formatMessageTime, formatBytes, sortContacts } from '../utils/helpers';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 const ChatContext = createContext();
 
@@ -47,6 +47,46 @@ export function ChatProvider({ children }) {
       return {};
     }
   });
+  const [globalSharedFile, setGlobalSharedFile] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Web Share Target Hook Integration - Global Level
+  useEffect(() => {
+    if (searchParams.get('shared') === 'true') {
+      const request = indexedDB.open('ChatAppSharedFilesDB', 1);
+
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        
+        if (!db.objectStoreNames.contains('files')) return;
+
+        const tx = db.transaction('files', 'readonly');
+        const store = tx.objectStore('files');
+        
+        const getRequest = store.get('latest-shared-file');
+        
+        getRequest.onsuccess = () => {
+          const file = getRequest.result;
+          if (file) {
+            setGlobalSharedFile(file);
+            
+            // Clean up the URL query param without adding to history
+            searchParams.delete('shared');
+            setSearchParams(searchParams, { replace: true });
+            
+            // Remove the file from IndexedDB to avoid processing it again
+            try {
+              const deleteTx = db.transaction('files', 'readwrite');
+              deleteTx.objectStore('files').delete('latest-shared-file');
+            } catch (e) {
+              console.error('Failed to clean up shared file from IndexedDB:', e);
+            }
+          }
+        };
+      };
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.get('shared')]);
 
   const saveDraft = useCallback((contactId, text) => {
     setDrafts(prev => {
@@ -1845,7 +1885,8 @@ export function ChatProvider({ children }) {
     drafts, saveDraft,
     markNotificationAsRead, markAllNotificationsAsRead,
     handleSend, handleFileUpload, handleSelect, sendTypingStatus, handleCreateGroup, handleToggleReaction,
-    handleEditMessage, handleDeleteMessage, handleToggleStar, handleForwardMessage, handleTogglePin, handleAddParticipantToGroup
+    handleEditMessage, handleDeleteMessage, handleToggleStar, handleForwardMessage, handleTogglePin, handleAddParticipantToGroup,
+    globalSharedFile, setGlobalSharedFile
   };
 
   return (
