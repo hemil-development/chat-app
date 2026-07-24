@@ -444,7 +444,7 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
             ))}
           </div>
         ) : (
-          <div className="h-full flex items-center justify-center text-slate-400">
+          <div className="h-full flex flex-col items-center justify-center text-slate-400 px-6 text-center">
             No messages yet. Send a message to start the conversation!
           </div>
         )}

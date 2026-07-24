@@ -379,8 +379,8 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
   const isSendDisabled = isEmpty && pendingFiles.length === 0;
 
   return (
-    <div className="px-6 pb-6 pt-2 bg-white flex-shrink-0">
-      <div className="msg-box relative">
+    <div className="px-3 md:px-6 pb-4 md:pb-6 pt-2 bg-white flex-shrink-0 w-full max-w-full">
+      <div className="msg-box relative w-full">
 
         {/* Emoji Picker Dropdown */}
         {emojiOpen && (

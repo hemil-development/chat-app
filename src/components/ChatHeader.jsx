@@ -143,12 +143,12 @@ export function ChatHeader({ contact, activeTab, onTabChange }) {
               </>
             )}
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <p className={clsx('text-[11px] font-medium', isOnline ? 'text-[#2eb67d]' : 'text-[#94a3b8]')}>
+          <div className="flex items-center gap-2 mt-0.5 min-w-0">
+            <p className={clsx('text-[11px] font-medium truncate', isOnline ? 'text-[#2eb67d]' : 'text-[#94a3b8]')}>
               {displayStatus}
             </p>
             {!contact.isChannel && hrmsStatus && (
-              <span className={clsx("px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold uppercase tracking-wider", getHrmsBadgeColor(hrmsStatus))}>
+              <span className={clsx("px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold uppercase tracking-wider flex-shrink-0", getHrmsBadgeColor(hrmsStatus))}>
                 {hrmsStatus}
               </span>
             )}
