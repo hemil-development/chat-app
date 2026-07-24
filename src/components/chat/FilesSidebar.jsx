@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, SlidersHorizontal, FileText, Image as ImageIcon, Check, Eye } from 'lucide-react';
+import { Search, Filter, SlidersHorizontal, FileText, Image as ImageIcon, Check, Eye, X } from 'lucide-react';
 import clsx from 'clsx';
 import { useChat } from '../../context/ChatContext';
 import { supabase } from '../../lib/supabase';
@@ -13,6 +13,7 @@ export function FilesSidebar() {
   const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     if (!companyUserId || !contacts) {
@@ -81,6 +82,14 @@ export function FilesSidebar() {
 
   // Filter logic
   const filteredFiles = files.filter(file => {
+    // 1. Search Query filter
+    if (query.trim()) {
+      const matchName = file.name.toLowerCase().includes(query.toLowerCase());
+      const matchSender = file.sender.toLowerCase().includes(query.toLowerCase());
+      if (!matchName && !matchSender) return false;
+    }
+
+    // 2. Tab/FilterType filter
     if (filterType === 'all') return true;
 
     const contact = contacts.find(c => c.roomId === file.roomId || c.id === file.roomId);
@@ -133,9 +142,19 @@ export function FilesSidebar() {
           <input
             type="text"
             placeholder="Search..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
             className="flex-1 bg-transparent text-[13px] text-[#0f172a] placeholder:text-[#94a3b8]
                        outline-none min-w-0"
           />
+          {query.length > 0 && (
+            <button 
+              onClick={() => setQuery('')}
+              className="text-[#94a3b8] hover:text-[#475569] transition-colors flex-shrink-0 focus:outline-none"
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center justify-between mb-1">
