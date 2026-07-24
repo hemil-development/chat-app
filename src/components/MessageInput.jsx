@@ -553,7 +553,7 @@ export function MessageInput({ onSendMessage, onTyping, contacts = [], onViewFil
             onPaste={handlePaste}
             onKeyUp={checkActiveFormats}
             onMouseUp={checkActiveFormats}
-            className="w-full bg-transparent text-[14px] text-[#0f172a] outline-none leading-relaxed min-h-[24px] max-h-[120px] overflow-y-auto rich-editor"
+            className="w-full bg-transparent text-[16px] md:text-[14px] text-[#0f172a] outline-none leading-relaxed min-h-[24px] max-h-[120px] overflow-y-auto rich-editor"
             style={{ minHeight: '24px' }}
           />
         </div>

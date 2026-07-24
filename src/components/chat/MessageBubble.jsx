@@ -395,18 +395,18 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
   } else {
     bubbleContent = (
       <div id={`bubble-${message.id}`} className={clsx(
-        'relative px-4 pt-2 pb-5 text-[14px] leading-relaxed whitespace-pre-wrap break-words w-fit min-w-[120px] max-w-[85vw] md:max-w-[75vw] lg:max-w-[65vw] shadow-sm animate-slide-up flex flex-col transition-all',
+        'relative px-3.5 pt-2.5 pb-2 text-[15px] md:text-[14px] leading-relaxed whitespace-pre-wrap break-words w-fit min-w-[100px] max-w-[100%] sm:max-w-[90%] md:max-w-[85%] lg:max-w-[75%] shadow-sm animate-slide-up flex flex-col transition-all',
         isMe
           ? 'bg-[#4f46e5] text-white rounded-2xl rounded-tr-sm self-end'
-          : 'bg-[#f8fafc] border border-[#e2e8f0] text-[#0f172a] rounded-2xl rounded-tl-sm self-start',
+          : 'bg-[#ffffff] border border-[#e2e8f0] text-[#0f172a] rounded-2xl rounded-tl-sm self-start',
         isHighlighted && 'ring-2 ring-[#f59e0b] ring-offset-1 ring-offset-white'
       )}>
         {message.isForwarded && (
           <div className={clsx(
-            "text-[10px] font-semibold flex items-center gap-1 mb-1.5 select-none",
-            isMe ? "text-indigo-200/80" : "text-slate-400"
+            "text-[10.5px] font-semibold flex items-center gap-1 mb-1.5 select-none",
+            isMe ? "text-indigo-200" : "text-slate-400"
           )}>
-            <CornerUpRight size={11} strokeWidth={2.5} />
+            <CornerUpRight size={12} strokeWidth={2.5} />
             <span>Forwarded</span>
           </div>
         )}
@@ -417,29 +417,30 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
                 <div 
                   onClick={() => setScrollToMessageId(replyToMessage.id)}
                   className={clsx(
-                    "cursor-pointer w-full text-left rounded-md px-3 py-1.5 border-l-2 opacity-90 hover:opacity-100 transition-opacity shadow-sm",
-                    isMe ? "bg-white/10 border-white text-white" : "bg-black/5 border-indigo-500 text-slate-800"
+                    "cursor-pointer w-full text-left rounded-md px-2.5 py-1.5 border-l-[3px] opacity-90 hover:opacity-100 transition-opacity",
+                    isMe ? "bg-black/10 border-white text-white" : "bg-slate-50 border-indigo-500 text-slate-800"
                   )}
                 >
-                  <div className={clsx("text-[10px] font-bold", isMe ? "text-white" : "text-indigo-600")}>{replySender}</div>
-                  <div className="text-[11px] line-clamp-4 opacity-90">{replyToMessage.text || 'Attachment'}</div>
+                  <div className={clsx("text-[11px] font-bold", isMe ? "text-white" : "text-indigo-600")}>{replySender}</div>
+                  <div className="text-[12px] md:text-[11px] line-clamp-2 opacity-90 leading-snug mt-0.5">{replyToMessage.text || 'Attachment'}</div>
                 </div>
               </div>
             );
         })()}
-        {(() => {
-          const allUsers = [...contacts];
-          if (currentUser && !allUsers.some(u => u.id === currentUser.id)) {
-            allUsers.push(currentUser);
-          }
-          return (
-            <div className="pb-0.5">{renderMessageText(message.text, allUsers, isMe)}</div>
-          );
-        })()}
 
-        {parsedReactions.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1.5 pb-1">
-            {parsedReactions.map(r => (
+        <div className="mb-0.5">
+          {(() => {
+            const allUsers = [...contacts];
+            if (currentUser && !allUsers.some(u => u.id === currentUser.id)) {
+              allUsers.push(currentUser);
+            }
+            return renderMessageText(message.text, allUsers, isMe);
+          })()}
+        </div>
+
+        <div className="flex items-end justify-between gap-4 mt-1">
+          <div className="flex flex-wrap gap-1">
+            {parsedReactions.length > 0 && parsedReactions.map(r => (
               <button
                 key={r.emoji}
                 onClick={(e) => {
@@ -447,14 +448,14 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
                   handleToggleReaction(message.id, r.emoji);
                 }}
                 className={clsx(
-                  "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-all border shadow-xs select-none",
+                  "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10.5px] font-semibold transition-all border shadow-xs select-none",
                   r.hasReacted
                     ? isMe
                       ? "bg-white/20 border-white/20 text-white"
                       : "bg-indigo-50 border-indigo-200 text-indigo-600"
                     : isMe
                       ? "bg-white/10 border-white/10 text-white/95 hover:bg-white/20"
-                      : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"
+                      : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
                 )}
               >
                 {renderEmojiHelper(r.emoji, 13)}
@@ -462,20 +463,21 @@ export function MessageBubble({ message, isMe, tick, onViewFile, isHighlighted, 
               </button>
             ))}
           </div>
-        )}
 
-        <div className="absolute bottom-1 right-2.5 flex items-center gap-1 select-none pointer-events-none">
-          <span className={clsx('text-[9px] tabular-nums font-semibold flex items-center gap-0.5', isMe ? 'text-indigo-200/80' : 'text-slate-400')}>
-            {message.timestamp}
-            {message.isEdited && <span className="italic ml-0.5">(edited)</span>}
+          <div className={clsx(
+            "text-[9.5px] tabular-nums font-semibold flex items-center gap-1 shrink-0 ml-auto select-none pointer-events-none",
+            isMe ? "text-indigo-200" : "text-slate-400"
+          )}>
+            <span>{message.timestamp}</span>
+            {message.isEdited && <span className="italic">(edited)</span>}
             {message.isStarred && (
-              <Star size={9} className="text-amber-400 fill-amber-400 shrink-0 ml-0.5" />
+              <Star size={10} className="text-amber-400 fill-amber-400 shrink-0" />
             )}
             {message.isPinned && (
-              <Pin size={9} className={clsx("shrink-0 ml-0.5 rotate-45", isMe ? "text-indigo-200 fill-indigo-200" : "text-indigo-500 fill-indigo-500")} />
+              <Pin size={10} className={clsx("shrink-0 rotate-45", isMe ? "text-indigo-200 fill-indigo-200" : "text-indigo-500 fill-indigo-500")} />
             )}
-          </span>
-          {isMe && tick}
+            {isMe && tick}
+          </div>
         </div>
       </div>
     );

@@ -72,7 +72,7 @@ export function StarredPanel() {
         </div>
 
         {loading ? (
-          <div className="grid gap-3 p-4">
+          <div className="grid gap-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex items-start gap-4 p-4 bg-white border border-[#e2e8f0] rounded-xl">
                 <div className="w-10 h-10 rounded-full shimmer shrink-0" />

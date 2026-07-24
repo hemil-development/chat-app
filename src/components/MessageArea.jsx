@@ -369,7 +369,7 @@ export function MessageArea({ messages, contact, currentUser, contacts = [], typ
                     </div>
 
                     {/* Messages */}
-                    <div className={clsx('flex flex-col gap-1 w-full max-w-[70%]', isMe ? 'items-end' : 'items-start')}>
+                    <div className={clsx('flex flex-col gap-1 w-full min-w-0', isMe ? 'items-end' : 'items-start')}>
                       {/* Header */}
                       {!isMe && (
                         <div className="flex items-baseline gap-2 mb-0.5 ml-1">
